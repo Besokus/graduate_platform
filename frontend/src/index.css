@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+:root {
+  --ink: #0d1b1a;
+  --muted: #5b6a67;
+  --primary: #0f766e;
+  --primary-ink: #f0fdfa;
+  --accent: #f59e0b;
+  --line: rgba(13, 27, 26, 0.12);
+  --surface: #ffffff;
+  --shadow: 0 12px 30px rgba(13, 27, 26, 0.08);
+
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ink);
+  background: #f7f3ed;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: #f7f3ed;
+}
+
+#root {
+  min-height: 100svh;
+}
+
+h1,
+h2,
+h3 {
+  font-family: 'DM Serif Display', 'Space Grotesk', serif;
+  font-weight: 400;
+  color: var(--ink);
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+}
