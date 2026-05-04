@@ -43,8 +43,8 @@ function CommunityDetailPage() {
       setError('')
       try {
         const [postData, commentData] = await Promise.all([
-          communityApi.postDetail(id),
-          communityApi.comments(id),
+          communityApi.postDetail(id, token),
+          communityApi.comments(id, token),
         ])
         if (active) {
           setPost({
@@ -73,7 +73,7 @@ function CommunityDetailPage() {
     return () => {
       active = false
     }
-  }, [id])
+  }, [id, token])
 
   async function handleSubmitComment(event) {
     event.preventDefault()
@@ -95,7 +95,7 @@ function CommunityDetailPage() {
     try {
       const created = await communityApi.createComment(
         id,
-        { authorId: user.id, content: commentText.trim() },
+        { content: commentText.trim() },
         token,
       )
       setComments((prev) => [...prev, created])

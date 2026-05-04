@@ -8,6 +8,7 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
@@ -25,7 +26,8 @@ public class PostService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> getPosts(String category, String keyword, String sort,
-                                         String tag, Boolean hasAttachment, int page, int size) {
+                                         String tag, Boolean hasAttachment, int page, int size,
+                                         boolean includeMembers) {
         Long categoryId = null;
         if (category != null && !category.isEmpty()) {
             categoryId = categoryRepository.findByCode(category)
@@ -39,7 +41,9 @@ public class PostService {
         }
 
         Pageable pageable = PageRequest.of(page, size, sortObj);
-        Page<Post> postPage = postRepository.findPublishedPosts(categoryId, keyword, tag, hasAttachment, pageable);
+        Page<Post> postPage = postRepository.findPublishedPosts(
+            includeMembers, categoryId, keyword, tag, hasAttachment, pageable
+        );
 
         List<Map<String, Object>> content = postPage.getContent().stream().map(this::toPostMap).toList();
         Map<String, Object> result = new HashMap<>();
@@ -52,35 +56,33 @@ public class PostService {
     }
 
     @Transactional
-    public Map<String, Object> getPostDetail(Long id) {
+    public Map<String, Object> getPostDetail(Long id, Long viewerUserId, boolean admin) {
         Post post = postRepository.findById(id)
             .orElseThrow(() -> new BusinessException("帖子不存在"));
-        post.setViewCount(post.getViewCount() + 1);
-        postRepository.save(post);
+        ensureCanView(post, viewerUserId, admin);
+        if ("PUBLISHED".equals(post.getStatus())) {
+            post.setViewCount(post.getViewCount() + 1);
+            postRepository.save(post);
+        }
         return toPostMap(post);
     }
 
     @Transactional
-    public Map<String, Object> createPost(CreatePostRequest req) {
+    public Map<String, Object> createPost(CreatePostRequest req, Long currentUserId) {
         PostCategory category = categoryRepository.findByCode(req.getCategoryCode())
             .orElseThrow(() -> new BusinessException("分类不存在"));
 
-        User author = userRepository.findById(req.getAuthorId())
+        User author = userRepository.findById(currentUserId)
             .orElseThrow(() -> new BusinessException("用户不存在"));
 
-        if ("muted".equals(author.getStatus())) {
-            throw new BusinessException("您已被禁言，无法发帖");
-        }
-        if ("banned".equals(author.getStatus())) {
-            throw new BusinessException("账号已被封禁，无法发帖");
-        }
+        ensureCanPost(author, Boolean.TRUE.equals(req.getHasAttachment()));
 
         // 审核规则：含附件 或 新注册用户 → 进入待审核
         String status = req.getStatus();
         if ("DRAFT".equals(status)) {
             // keep as draft
         } else if (Boolean.TRUE.equals(req.getHasAttachment())
-                   || author.getCreatedAt().isAfter(java.time.LocalDateTime.now().minusDays(7))) {
+                   || author.getCreatedAt().isAfter(LocalDateTime.now().minusDays(7))) {
             status = "PENDING";
         } else {
             status = "PUBLISHED";
@@ -124,5 +126,45 @@ public class PostService {
         map.put("createdAt", post.getCreatedAt().toString());
         map.put("updatedAt", post.getUpdatedAt().toString());
         return map;
+    }
+
+    private void ensureCanView(Post post, Long viewerUserId, boolean admin) {
+        boolean published = "PUBLISHED".equals(post.getStatus());
+        boolean membersOnly = "members".equalsIgnoreCase(post.getVisibility());
+        boolean isAuthor = viewerUserId != null && viewerUserId.equals(post.getAuthor().getId());
+
+        if (published) {
+            if (membersOnly && viewerUserId == null && !admin) {
+                throw new BusinessException("该帖子仅注册用户可见");
+            }
+            return;
+        }
+
+        if (!admin && !isAuthor) {
+            throw new BusinessException("无权查看该帖子");
+        }
+    }
+
+    private void ensureCanPost(User author, boolean hasAttachment) {
+        String status = author.getStatus();
+        if ("banned".equals(status)) {
+            throw new BusinessException("账号已被封禁，无法发帖");
+        }
+        if ("muted".equals(status)) {
+            throw new BusinessException("您已被禁言，无法发帖");
+        }
+        if ("temporary_locked".equals(status) && isCurrentlyLocked(author)) {
+            throw new BusinessException("账号已被临时锁定，请稍后再试");
+        }
+        if ("upload_limited".equals(status) && hasAttachment) {
+            throw new BusinessException("账号当前限制上传，无法发布含附件内容");
+        }
+    }
+
+    private boolean isCurrentlyLocked(User user) {
+        if (user.getLockedUntil() == null) {
+            return false;
+        }
+        return user.getLockedUntil().isAfter(LocalDateTime.now());
     }
 }

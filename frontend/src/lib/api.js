@@ -41,7 +41,7 @@ export const communityApi = {
   categories() {
     return request('/api/post-categories')
   },
-  posts(params = {}) {
+  posts(params = {}, token) {
     const search = new URLSearchParams()
     if (params.category) search.set('category', params.category)
     if (params.keyword) search.set('keyword', params.keyword)
@@ -52,13 +52,13 @@ export const communityApi = {
     }
     search.set('page', String(params.page ?? 0))
     search.set('size', String(params.size ?? 20))
-    return request(`/api/posts?${search.toString()}`)
+    return request(`/api/posts?${search.toString()}`, { token })
   },
-  postDetail(id) {
-    return request(`/api/posts/${id}`)
+  postDetail(id, token) {
+    return request(`/api/posts/${id}`, { token })
   },
-  comments(postId) {
-    return request(`/api/posts/${postId}/comments`)
+  comments(postId, token) {
+    return request(`/api/posts/${postId}/comments`, { token })
   },
   createPost(payload, token) {
     return request('/api/posts', { method: 'POST', body: payload, token })
