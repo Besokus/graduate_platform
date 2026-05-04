@@ -7,17 +7,23 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
 public class AdminService {
 
     private final PostRepository postRepository;
+    private final PostReportRepository reportRepository;
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
 
-    public AdminService(PostRepository postRepository, UserRepository userRepository, CommentRepository commentRepository) {
+    public AdminService(PostRepository postRepository,
+                        PostReportRepository reportRepository,
+                        UserRepository userRepository,
+                        CommentRepository commentRepository) {
         this.postRepository = postRepository;
+        this.reportRepository = reportRepository;
         this.userRepository = userRepository;
         this.commentRepository = commentRepository;
     }
@@ -56,7 +62,7 @@ public class AdminService {
     }
 
     @Transactional
-    public Map<String, Object> reviewPost(Long postId, String action, String reason) {
+    public Map<String, Object> reviewPost(Long postId, Long adminUserId, String action, String reason) {
         Post post = postRepository.findById(postId)
             .orElseThrow(() -> new BusinessException("帖子不存在"));
 
@@ -76,18 +82,93 @@ public class AdminService {
                 if (!"PENDING".equals(post.getStatus())) {
                     throw new BusinessException("只能驳回待审核状态的帖子");
                 }
+                if (reason == null || reason.isBlank()) {
+                    throw new BusinessException("驳回时请填写原因");
+                }
                 post.setStatus("REJECTED");
                 break;
             case "OFFLINE":
                 if (!"PUBLISHED".equals(post.getStatus())) {
                     throw new BusinessException("只能下架已发布的帖子");
                 }
+                if (reason == null || reason.isBlank()) {
+                    throw new BusinessException("下架时请填写原因");
+                }
                 post.setStatus("OFFLINE");
                 break;
         }
 
+        post.setReviewReason(reason);
+        post.setReviewedById(adminUserId);
+        post.setReviewedAt(LocalDateTime.now());
+
         postRepository.save(post);
         return toPostDetail(post);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getReports(String status, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<PostReport> reportPage;
+        if (status != null && !status.isBlank()) {
+            reportPage = reportRepository.findByStatusOrderByCreatedAtDesc(status.toUpperCase(), pageable);
+        } else {
+            reportPage = reportRepository.findAllByOrderByCreatedAtDesc(pageable);
+        }
+
+        List<Map<String, Object>> content = reportPage.getContent().stream()
+            .map(this::toReportDetail)
+            .toList();
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("content", content);
+        result.put("totalPages", reportPage.getTotalPages());
+        result.put("totalElements", reportPage.getTotalElements());
+        return result;
+    }
+
+    @Transactional
+    public Map<String, Object> reviewReport(Long reportId, Long adminUserId, String action, String note) {
+        PostReport report = reportRepository.findById(reportId)
+            .orElseThrow(() -> new BusinessException("举报记录不存在"));
+        User admin = userRepository.findById(adminUserId)
+            .orElseThrow(() -> new BusinessException("管理员不存在"));
+
+        if (!"admin".equals(admin.getRole())) {
+            throw new BusinessException("仅管理员可处理举报");
+        }
+        if (!"PENDING".equals(report.getStatus())) {
+            throw new BusinessException("该举报已处理");
+        }
+
+        String normalized = action == null ? "" : action.trim().toUpperCase();
+        if (!Set.of("RESOLVE", "REJECT").contains(normalized)) {
+            throw new BusinessException("无效操作，支持: RESOLVE, REJECT");
+        }
+
+        Post post = report.getPost();
+        if ("RESOLVE".equals(normalized)) {
+            report.setStatus("RESOLVED");
+            if ("PUBLISHED".equals(post.getStatus())) {
+                post.setStatus("OFFLINE");
+                post.setReviewReason("举报成立自动下架: " + (note == null ? "" : note.trim()));
+                post.setReviewedById(adminUserId);
+                post.setReviewedAt(LocalDateTime.now());
+            }
+        } else {
+            report.setStatus("REJECTED");
+        }
+
+        report.setReviewer(admin);
+        report.setReviewNote(note);
+        report.setReviewedAt(LocalDateTime.now());
+        reportRepository.save(report);
+
+        long pendingCount = reportRepository.countByPostIdAndStatus(post.getId(), "PENDING");
+        post.setReportCount((int) pendingCount);
+        postRepository.save(post);
+
+        return toReportDetail(report);
     }
 
     // ==================== 用户管理 ====================
@@ -168,10 +249,12 @@ public class AdminService {
     public Map<String, Object> getDashboard() {
         long totalUsers = userRepository.count();
         long pendingPosts = postRepository.findByStatusOrderByCreatedAtDesc("PENDING", PageRequest.of(0, 1)).getTotalElements();
+        long pendingReports = reportRepository.countByStatus("PENDING");
 
         Map<String, Object> dash = new LinkedHashMap<>();
         dash.put("totalUsers", totalUsers);
         dash.put("pendingPosts", pendingPosts);
+        dash.put("pendingReports", pendingReports);
         return dash;
     }
 
@@ -190,10 +273,36 @@ public class AdminService {
         map.put("authorId", post.getAuthor().getId());
         map.put("authorName", post.getAuthor().getName());
         map.put("status", post.getStatus());
+        map.put("reviewReason", post.getReviewReason());
+        map.put("reviewedById", post.getReviewedById());
+        map.put("reviewedAt", post.getReviewedAt() != null ? post.getReviewedAt().toString() : null);
         map.put("viewCount", post.getViewCount());
         map.put("commentCount", post.getCommentCount());
         map.put("reportCount", post.getReportCount());
         map.put("createdAt", post.getCreatedAt().toString());
+        return map;
+    }
+
+    private Map<String, Object> toReportDetail(PostReport report) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", report.getId());
+        map.put("reason", report.getReason());
+        map.put("status", report.getStatus());
+        map.put("reviewNote", report.getReviewNote());
+        map.put("createdAt", report.getCreatedAt() != null ? report.getCreatedAt().toString() : null);
+        map.put("reviewedAt", report.getReviewedAt() != null ? report.getReviewedAt().toString() : null);
+        map.put("reviewer", report.getReviewer() != null ? report.getReviewer().getName() : null);
+        map.put("reporter", Map.of(
+            "id", report.getReporter().getId(),
+            "name", report.getReporter().getName()
+        ));
+        map.put("post", Map.of(
+            "id", report.getPost().getId(),
+            "title", report.getPost().getTitle(),
+            "status", report.getPost().getStatus(),
+            "authorId", report.getPost().getAuthor().getId(),
+            "authorName", report.getPost().getAuthor().getName()
+        ));
         return map;
     }
 }

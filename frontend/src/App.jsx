@@ -43,6 +43,7 @@ import ExperiencePage from './pages/studyabroad/ExperiencePage.jsx'
 import AdminPage from './pages/admin/AdminPage.jsx'
 import ReviewPage from './pages/admin/ReviewPage.jsx'
 import UserManagementPage from './pages/admin/UserManagementPage.jsx'
+import ReportPage from './pages/admin/ReportPage.jsx'
 
 export default function App() {
   return (
@@ -91,6 +92,7 @@ export default function App() {
       <Route path="/admin" element={<AdminPage />} />
       <Route path="/admin/review" element={<ReviewPage />} />
       <Route path="/admin/users" element={<UserManagementPage />} />
+      <Route path="/admin/reports" element={<ReportPage />} />
     </Routes>
     </>
   )

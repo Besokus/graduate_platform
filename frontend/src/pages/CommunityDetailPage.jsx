@@ -35,6 +35,8 @@ function CommunityDetailPage() {
   const [commentText, setCommentText] = useState('')
   const [commentError, setCommentError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [acting, setActing] = useState(false)
+  const [actionMessage, setActionMessage] = useState('')
 
   useEffect(() => {
     let active = true
@@ -56,6 +58,8 @@ function CommunityDetailPage() {
             likeCount: postData.likeCount ?? 0,
             favoriteCount: postData.favoriteCount ?? 0,
             reportCount: postData.reportCount ?? 0,
+            liked: Boolean(postData.liked),
+            favorited: Boolean(postData.favorited),
           })
           setComments(commentData || [])
         }
@@ -107,6 +111,65 @@ function CommunityDetailPage() {
     }
   }
 
+  async function handleToggleLike() {
+    if (!isAuthed) {
+      setActionMessage('请先登录后再点赞')
+      return
+    }
+    setActing(true)
+    setActionMessage('')
+    try {
+      const data = await communityApi.toggleLike(id, token)
+      setPost((prev) => prev ? { ...prev, liked: data.liked, likeCount: data.likeCount } : prev)
+    } catch (err) {
+      setActionMessage(err.message || '点赞操作失败')
+    } finally {
+      setActing(false)
+    }
+  }
+
+  async function handleToggleFavorite() {
+    if (!isAuthed) {
+      setActionMessage('请先登录后再收藏')
+      return
+    }
+    setActing(true)
+    setActionMessage('')
+    try {
+      const data = await communityApi.toggleFavorite(id, token)
+      setPost((prev) => prev ? { ...prev, favorited: data.favorited, favoriteCount: data.favoriteCount } : prev)
+    } catch (err) {
+      setActionMessage(err.message || '收藏操作失败')
+    } finally {
+      setActing(false)
+    }
+  }
+
+  async function handleReport() {
+    if (!isAuthed) {
+      setActionMessage('请先登录后再举报')
+      return
+    }
+    const reason = window.prompt('请输入举报原因（不超过300字）')
+    if (reason == null) return
+    if (!reason.trim()) {
+      setActionMessage('举报原因不能为空')
+      return
+    }
+
+    setActing(true)
+    setActionMessage('')
+    try {
+      const data = await communityApi.reportPost(id, reason.trim(), token)
+      setPost((prev) => prev ? { ...prev, reportCount: data.reportCount } : prev)
+      setActionMessage('举报已提交，等待管理员处理')
+    } catch (err) {
+      setActionMessage(err.message || '举报失败')
+    } finally {
+      setActing(false)
+    }
+  }
+
   return (
     <div className="app">
       <Navbar />
@@ -154,6 +217,34 @@ function CommunityDetailPage() {
                   <span>收藏 {post?.favoriteCount ?? 0}</span>
                   <span>举报 {post?.reportCount ?? 0}</span>
                 </div>
+                <div className="comment-actions">
+                  <button
+                    className={`btn outline small ${post?.liked ? 'selected' : ''}`}
+                    type="button"
+                    onClick={handleToggleLike}
+                    disabled={acting}
+                  >
+                    {post?.liked ? '取消点赞' : '点赞'}
+                  </button>
+                  <button
+                    className={`btn outline small ${post?.favorited ? 'selected' : ''}`}
+                    type="button"
+                    onClick={handleToggleFavorite}
+                    disabled={acting}
+                  >
+                    {post?.favorited ? '取消收藏' : '收藏'}
+                  </button>
+                  <button
+                    className="btn outline small"
+                    type="button"
+                    onClick={handleReport}
+                    disabled={acting}
+                    style={{ color: '#b91c1c', borderColor: '#b91c1c' }}
+                  >
+                    举报
+                  </button>
+                </div>
+                {actionMessage ? <div className="muted">{actionMessage}</div> : null}
               </div>
             </>
           )}

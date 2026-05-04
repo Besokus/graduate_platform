@@ -45,6 +45,12 @@ export default function AdminPage() {
                   </div>
                   <div className="mini-label">待审核帖子</div>
                 </div>
+                <div className="mini-card">
+                  <div className="mini-value" style={{ color: stats?.pendingReports > 0 ? '#b91c1c' : undefined }}>
+                    {stats?.pendingReports ?? '-'}
+                  </div>
+                  <div className="mini-label">待处理举报</div>
+                </div>
               </div>
             </div>
 
@@ -52,6 +58,7 @@ export default function AdminPage() {
               <div className="card-title">快捷操作</div>
               <Link className="btn primary" to="/admin/review">内容审核</Link>
               <Link className="btn outline" to="/admin/users">用户管理</Link>
+              <Link className="btn outline" to="/admin/reports">举报处理</Link>
             </div>
           </div>
         </section>
@@ -84,6 +91,14 @@ export default function AdminPage() {
               </div>
               <p className="muted">新增/修改/删除题库与试题，预留批量导入接口。</p>
               <button className="btn outline small" disabled>开发中</button>
+            </div>
+            <div className="track-card">
+              <div className="track-head">
+                <h3>举报处理</h3>
+                <span className="tag subtle">UC-30</span>
+              </div>
+              <p className="muted">查看举报列表，支持“成立并下架”或“驳回”并留痕。</p>
+              <Link className="btn primary small" to="/admin/reports">处理举报</Link>
             </div>
           </div>
         </section>

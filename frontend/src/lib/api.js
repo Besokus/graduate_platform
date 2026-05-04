@@ -66,6 +66,19 @@ export const communityApi = {
   createComment(postId, payload, token) {
     return request(`/api/posts/${postId}/comments`, { method: 'POST', body: payload, token })
   },
+  toggleLike(postId, token) {
+    return request(`/api/posts/${postId}/like`, { method: 'POST', token })
+  },
+  toggleFavorite(postId, token) {
+    return request(`/api/posts/${postId}/favorite`, { method: 'POST', token })
+  },
+  reportPost(postId, reason, token) {
+    return request(`/api/posts/${postId}/report`, {
+      method: 'POST',
+      body: { reason },
+      token,
+    })
+  },
 }
 
 export const practiceApi = {
@@ -124,6 +137,17 @@ export const adminApi = {
   updateUserStatus(id, status, reason, token) {
     return request(`/api/admin/users/${id}/status`, {
       method: 'PUT', body: { status, reason }, token,
+    })
+  },
+  reports(status, page, size, token) {
+    const q = status ? `?status=${status}&page=${page}&size=${size}` : `?page=${page}&size=${size}`
+    return request(`/api/admin/reports${q}`, { token })
+  },
+  reviewReport(id, action, note, token) {
+    return request(`/api/admin/reports/${id}/review`, {
+      method: 'PUT',
+      body: { action, note },
+      token,
     })
   },
 }

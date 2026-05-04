@@ -1,6 +1,7 @@
 package com.graduateplatform.controller;
 
 import com.graduateplatform.dto.request.CreatePostRequest;
+import com.graduateplatform.dto.request.ReportPostRequest;
 import com.graduateplatform.dto.response.ApiResponse;
 import com.graduateplatform.service.PostService;
 import jakarta.validation.Valid;
@@ -45,6 +46,35 @@ public class PostController {
             return ApiResponse.fail("未登录或登录已失效");
         }
         return ApiResponse.ok(postService.createPost(req, currentUserId), "发布成功");
+    }
+
+    @PostMapping("/{id}/like")
+    public ApiResponse<?> toggleLike(@PathVariable Long id, Authentication auth) {
+        Long currentUserId = getCurrentUserId(auth);
+        if (currentUserId == null) {
+            return ApiResponse.fail("未登录或登录已失效");
+        }
+        return ApiResponse.ok(postService.toggleLike(id, currentUserId), "操作成功");
+    }
+
+    @PostMapping("/{id}/favorite")
+    public ApiResponse<?> toggleFavorite(@PathVariable Long id, Authentication auth) {
+        Long currentUserId = getCurrentUserId(auth);
+        if (currentUserId == null) {
+            return ApiResponse.fail("未登录或登录已失效");
+        }
+        return ApiResponse.ok(postService.toggleFavorite(id, currentUserId), "操作成功");
+    }
+
+    @PostMapping("/{id}/report")
+    public ApiResponse<?> report(@PathVariable Long id,
+                                 @Valid @RequestBody ReportPostRequest req,
+                                 Authentication auth) {
+        Long currentUserId = getCurrentUserId(auth);
+        if (currentUserId == null) {
+            return ApiResponse.fail("未登录或登录已失效");
+        }
+        return ApiResponse.ok(postService.reportPost(id, currentUserId, req.getReason()), "举报已提交");
     }
 
     private Long getCurrentUserId(Authentication auth) {

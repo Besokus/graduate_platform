@@ -39,9 +39,18 @@ export default function ReviewPage() {
   useEffect(() => { load() }, [filterStatus, token])
 
   async function handleAction(postId, action) {
+    let reason = ''
+    if (action === 'REJECT' || action === 'OFFLINE') {
+      reason = window.prompt('请输入处理原因') || ''
+      if (!reason.trim()) {
+        setError('该操作必须填写原因')
+        return
+      }
+    }
+
     setActing(postId)
     try {
-      await adminApi.reviewPost(postId, action, '', token)
+      await adminApi.reviewPost(postId, action, reason.trim(), token)
       setPosts(prev => prev.filter(p => p.id !== postId))
     } catch (e) {
       setError(e.message)
@@ -110,6 +119,7 @@ export default function ReviewPage() {
                     <span>评论{post.commentCount}</span>
                     <span>举报{post.reportCount}</span>
                   </div>
+                  {post.reviewReason ? <div className="muted">处理原因：{post.reviewReason}</div> : null}
                   <div className="muted" style={{ fontSize: 12 }}>
                     {post.createdAt?.replace('T', ' ').slice(0, 16)}
                   </div>
