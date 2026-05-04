@@ -99,7 +99,7 @@ function CommunityPage() {
             nextFilters.hasAttachment === 'all'
               ? undefined
               : nextFilters.hasAttachment === 'yes',
-        }),
+        }, token),
       ])
 
       const normalizedPosts = (postData.content || postData || []).map(normalizePost)
@@ -115,7 +115,7 @@ function CommunityPage() {
   useEffect(() => {
     loadPosts()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [token])
 
   const availableTags = useMemo(() => {
     const tagSet = new Set(['复习节奏', '资料共享', '岗位信息', '报录比', '模拟面试'])
@@ -147,7 +147,6 @@ function CommunityPage() {
           title: form.title.trim(),
           content: form.content.trim(),
           categoryCode: form.categoryCode,
-          authorId: user.id,
           tags: form.tags
             .split(',')
             .map((item) => item.trim())

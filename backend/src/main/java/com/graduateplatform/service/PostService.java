@@ -1,14 +1,29 @@
 package com.graduateplatform.service;
 
 import com.graduateplatform.dto.request.CreatePostRequest;
-import com.graduateplatform.entity.*;
+import com.graduateplatform.entity.Post;
+import com.graduateplatform.entity.PostCategory;
+import com.graduateplatform.entity.PostInteraction;
+import com.graduateplatform.entity.PostReport;
+import com.graduateplatform.entity.User;
 import com.graduateplatform.exception.BusinessException;
-import com.graduateplatform.repository.*;
-import org.springframework.data.domain.*;
+import com.graduateplatform.repository.PostCategoryRepository;
+import com.graduateplatform.repository.PostInteractionRepository;
+import com.graduateplatform.repository.PostReportRepository;
+import com.graduateplatform.repository.PostRepository;
+import com.graduateplatform.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class PostService {
@@ -16,16 +31,25 @@ public class PostService {
     private final PostRepository postRepository;
     private final PostCategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final PostInteractionRepository interactionRepository;
+    private final PostReportRepository reportRepository;
 
-    public PostService(PostRepository postRepository, PostCategoryRepository categoryRepository, UserRepository userRepository) {
+    public PostService(PostRepository postRepository,
+                       PostCategoryRepository categoryRepository,
+                       UserRepository userRepository,
+                       PostInteractionRepository interactionRepository,
+                       PostReportRepository reportRepository) {
         this.postRepository = postRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
+        this.interactionRepository = interactionRepository;
+        this.reportRepository = reportRepository;
     }
 
     @Transactional(readOnly = true)
     public Map<String, Object> getPosts(String category, String keyword, String sort,
-                                         String tag, Boolean hasAttachment, int page, int size) {
+                                        String tag, Boolean hasAttachment, int page, int size,
+                                        boolean includeMembers) {
         Long categoryId = null;
         if (category != null && !category.isEmpty()) {
             categoryId = categoryRepository.findByCode(category)
@@ -39,9 +63,15 @@ public class PostService {
         }
 
         Pageable pageable = PageRequest.of(page, size, sortObj);
-        Page<Post> postPage = postRepository.findPublishedPosts(categoryId, keyword, tag, hasAttachment, pageable);
+        Page<Post> postPage = postRepository.findPublishedPosts(
+            includeMembers, categoryId, keyword, tag, hasAttachment, pageable
+        );
 
-        List<Map<String, Object>> content = postPage.getContent().stream().map(this::toPostMap).toList();
+        List<Map<String, Object>> content = postPage.getContent()
+            .stream()
+            .map(post -> toPostMap(post, null))
+            .toList();
+
         Map<String, Object> result = new HashMap<>();
         result.put("content", content);
         result.put("totalPages", postPage.getTotalPages());
@@ -52,35 +82,32 @@ public class PostService {
     }
 
     @Transactional
-    public Map<String, Object> getPostDetail(Long id) {
+    public Map<String, Object> getPostDetail(Long id, Long viewerUserId, boolean admin) {
         Post post = postRepository.findById(id)
             .orElseThrow(() -> new BusinessException("帖子不存在"));
-        post.setViewCount(post.getViewCount() + 1);
-        postRepository.save(post);
-        return toPostMap(post);
+        ensureCanView(post, viewerUserId, admin);
+        if ("PUBLISHED".equals(post.getStatus())) {
+            post.setViewCount(post.getViewCount() + 1);
+            postRepository.save(post);
+        }
+        return toPostMap(post, viewerUserId);
     }
 
     @Transactional
-    public Map<String, Object> createPost(CreatePostRequest req) {
+    public Map<String, Object> createPost(CreatePostRequest req, Long currentUserId) {
         PostCategory category = categoryRepository.findByCode(req.getCategoryCode())
             .orElseThrow(() -> new BusinessException("分类不存在"));
 
-        User author = userRepository.findById(req.getAuthorId())
+        User author = userRepository.findById(currentUserId)
             .orElseThrow(() -> new BusinessException("用户不存在"));
 
-        if ("muted".equals(author.getStatus())) {
-            throw new BusinessException("您已被禁言，无法发帖");
-        }
-        if ("banned".equals(author.getStatus())) {
-            throw new BusinessException("账号已被封禁，无法发帖");
-        }
+        ensureCanPost(author, Boolean.TRUE.equals(req.getHasAttachment()));
 
-        // 审核规则：含附件 或 新注册用户 → 进入待审核
         String status = req.getStatus();
         if ("DRAFT".equals(status)) {
             // keep as draft
         } else if (Boolean.TRUE.equals(req.getHasAttachment())
-                   || author.getCreatedAt().isAfter(java.time.LocalDateTime.now().minusDays(7))) {
+            || author.getCreatedAt().isAfter(LocalDateTime.now().minusDays(7))) {
             status = "PENDING";
         } else {
             status = "PUBLISHED";
@@ -100,15 +127,103 @@ public class PostService {
             .build();
 
         post = postRepository.save(post);
-        return toPostMap(post);
+        return toPostMap(post, currentUserId);
     }
 
-    private Map<String, Object> toPostMap(Post post) {
+    @Transactional
+    public Map<String, Object> toggleLike(Long postId, Long currentUserId) {
+        return toggleInteraction(postId, currentUserId, "LIKE");
+    }
+
+    @Transactional
+    public Map<String, Object> toggleFavorite(Long postId, Long currentUserId) {
+        return toggleInteraction(postId, currentUserId, "FAVORITE");
+    }
+
+    @Transactional
+    public Map<String, Object> reportPost(Long postId, Long currentUserId, String reason) {
+        Post post = postRepository.findById(postId)
+            .orElseThrow(() -> new BusinessException("帖子不存在"));
+        User reporter = userRepository.findById(currentUserId)
+            .orElseThrow(() -> new BusinessException("用户不存在"));
+
+        ensureCanInteract(post, reporter);
+        if (currentUserId.equals(post.getAuthor().getId())) {
+            throw new BusinessException("不能举报自己发布的帖子");
+        }
+
+        if (reportRepository.existsByPostIdAndReporterId(postId, currentUserId)) {
+            throw new BusinessException("你已举报过该帖子，请勿重复提交");
+        }
+
+        PostReport report = PostReport.builder()
+            .post(post)
+            .reporter(reporter)
+            .reason(reason.trim())
+            .status("PENDING")
+            .build();
+        report = reportRepository.save(report);
+
+        long pendingReports = reportRepository.countByPostIdAndStatus(postId, "PENDING");
+        post.setReportCount((int) pendingReports);
+        postRepository.save(post);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("reportId", report.getId());
+        result.put("status", report.getStatus());
+        result.put("reportCount", post.getReportCount());
+        return result;
+    }
+
+    private Map<String, Object> toggleInteraction(Long postId, Long currentUserId, String type) {
+        Post post = postRepository.findById(postId)
+            .orElseThrow(() -> new BusinessException("帖子不存在"));
+        User user = userRepository.findById(currentUserId)
+            .orElseThrow(() -> new BusinessException("用户不存在"));
+
+        ensureCanInteract(post, user);
+
+        boolean active;
+        var existing = interactionRepository.findByPostIdAndUserIdAndType(postId, currentUserId, type);
+        if (existing.isPresent()) {
+            interactionRepository.delete(existing.get());
+            active = false;
+        } else {
+            interactionRepository.save(PostInteraction.builder()
+                .post(post)
+                .user(user)
+                .type(type)
+                .build());
+            active = true;
+        }
+
+        long likeCount = interactionRepository.countByPostIdAndType(postId, "LIKE");
+        long favoriteCount = interactionRepository.countByPostIdAndType(postId, "FAVORITE");
+        post.setLikeCount((int) likeCount);
+        post.setFavoriteCount((int) favoriteCount);
+        postRepository.save(post);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        if ("LIKE".equals(type)) {
+            result.put("liked", active);
+            result.put("likeCount", post.getLikeCount());
+        } else {
+            result.put("favorited", active);
+            result.put("favoriteCount", post.getFavoriteCount());
+        }
+        return result;
+    }
+
+    private Map<String, Object> toPostMap(Post post, Long viewerUserId) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", post.getId());
         map.put("title", post.getTitle());
         map.put("content", post.getContent());
-        map.put("category", Map.of("id", post.getCategory().getId(), "code", post.getCategory().getCode(), "name", post.getCategory().getName()));
+        map.put("category", Map.of(
+            "id", post.getCategory().getId(),
+            "code", post.getCategory().getCode(),
+            "name", post.getCategory().getName()
+        ));
         map.put("tags", post.getTags());
         map.put("visibility", post.getVisibility());
         map.put("anonymous", post.getAnonymous());
@@ -116,6 +231,9 @@ public class PostService {
         map.put("attachmentNote", post.getAttachmentNote());
         map.put("authorId", post.getAnonymous() ? null : post.getAuthor().getId());
         map.put("status", post.getStatus());
+        map.put("reviewReason", post.getReviewReason());
+        map.put("reviewedById", post.getReviewedById());
+        map.put("reviewedAt", post.getReviewedAt() != null ? post.getReviewedAt().toString() : null);
         map.put("viewCount", post.getViewCount());
         map.put("commentCount", post.getCommentCount());
         map.put("likeCount", post.getLikeCount());
@@ -123,6 +241,71 @@ public class PostService {
         map.put("reportCount", post.getReportCount());
         map.put("createdAt", post.getCreatedAt().toString());
         map.put("updatedAt", post.getUpdatedAt().toString());
+
+        if (viewerUserId != null) {
+            boolean liked = interactionRepository
+                .findByPostIdAndUserIdAndType(post.getId(), viewerUserId, "LIKE")
+                .isPresent();
+            boolean favorited = interactionRepository
+                .findByPostIdAndUserIdAndType(post.getId(), viewerUserId, "FAVORITE")
+                .isPresent();
+            map.put("liked", liked);
+            map.put("favorited", favorited);
+        }
+
         return map;
+    }
+
+    private void ensureCanView(Post post, Long viewerUserId, boolean admin) {
+        boolean published = "PUBLISHED".equals(post.getStatus());
+        boolean membersOnly = "members".equalsIgnoreCase(post.getVisibility());
+        boolean isAuthor = viewerUserId != null && viewerUserId.equals(post.getAuthor().getId());
+
+        if (published) {
+            if (membersOnly && viewerUserId == null && !admin) {
+                throw new BusinessException("该帖子仅注册用户可见");
+            }
+            return;
+        }
+
+        if (!admin && !isAuthor) {
+            throw new BusinessException("无权查看该帖子");
+        }
+    }
+
+    private void ensureCanPost(User author, boolean hasAttachment) {
+        String status = author.getStatus();
+        if ("banned".equals(status)) {
+            throw new BusinessException("账号已被封禁，无法发帖");
+        }
+        if ("muted".equals(status)) {
+            throw new BusinessException("您已被禁言，无法发帖");
+        }
+        if ("temporary_locked".equals(status) && isCurrentlyLocked(author)) {
+            throw new BusinessException("账号已被临时锁定，请稍后再试");
+        }
+        if ("upload_limited".equals(status) && hasAttachment) {
+            throw new BusinessException("账号当前限制上传，无法发布含附件内容");
+        }
+    }
+
+    private void ensureCanInteract(Post post, User user) {
+        if (!"PUBLISHED".equals(post.getStatus())) {
+            throw new BusinessException("该帖子当前不可互动");
+        }
+        String status = user.getStatus();
+        if ("banned".equals(status)) {
+            throw new BusinessException("账号已被封禁，无法执行该操作");
+        }
+        if ("temporary_locked".equals(status) && isCurrentlyLocked(user)) {
+            throw new BusinessException("账号已被临时锁定，请稍后再试");
+        }
+    }
+
+    private boolean isCurrentlyLocked(User user) {
+        if (user.getLockedUntil() == null) {
+            return false;
+        }
+        return user.getLockedUntil().isAfter(LocalDateTime.now());
     }
 }

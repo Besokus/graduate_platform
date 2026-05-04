@@ -41,7 +41,7 @@ export const communityApi = {
   categories() {
     return request('/api/post-categories')
   },
-  posts(params = {}) {
+  posts(params = {}, token) {
     const search = new URLSearchParams()
     if (params.category) search.set('category', params.category)
     if (params.keyword) search.set('keyword', params.keyword)
@@ -52,19 +52,32 @@ export const communityApi = {
     }
     search.set('page', String(params.page ?? 0))
     search.set('size', String(params.size ?? 20))
-    return request(`/api/posts?${search.toString()}`)
+    return request(`/api/posts?${search.toString()}`, { token })
   },
-  postDetail(id) {
-    return request(`/api/posts/${id}`)
+  postDetail(id, token) {
+    return request(`/api/posts/${id}`, { token })
   },
-  comments(postId) {
-    return request(`/api/posts/${postId}/comments`)
+  comments(postId, token) {
+    return request(`/api/posts/${postId}/comments`, { token })
   },
   createPost(payload, token) {
     return request('/api/posts', { method: 'POST', body: payload, token })
   },
   createComment(postId, payload, token) {
     return request(`/api/posts/${postId}/comments`, { method: 'POST', body: payload, token })
+  },
+  toggleLike(postId, token) {
+    return request(`/api/posts/${postId}/like`, { method: 'POST', token })
+  },
+  toggleFavorite(postId, token) {
+    return request(`/api/posts/${postId}/favorite`, { method: 'POST', token })
+  },
+  reportPost(postId, reason, token) {
+    return request(`/api/posts/${postId}/report`, {
+      method: 'POST',
+      body: { reason },
+      token,
+    })
   },
 }
 
@@ -97,6 +110,32 @@ export const userApi = {
   dashboard(token) {
     return request('/api/users/me/dashboard', { token })
   },
+  updateProfile(payload, token) {
+    return request('/api/users/me/profile', { method: 'PUT', body: payload, token })
+  },
+  myPosts(page, size, token) {
+    return request(`/api/users/me/posts?page=${page}&size=${size}`, { token })
+  },
+  updateMyPost(id, payload, token) {
+    return request(`/api/users/me/posts/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteMyPost(id, token) {
+    return request(`/api/users/me/posts/${id}`, { method: 'DELETE', token })
+  },
+  myComments(page, size, token) {
+    return request(`/api/users/me/comments?page=${page}&size=${size}`, { token })
+  },
+  deleteMyComment(id, token) {
+    return request(`/api/users/me/comments/${id}`, { method: 'DELETE', token })
+  },
+  myAttempts(page, size, filters = {}, token) {
+    const params = new URLSearchParams({ page: String(page), size: String(size) })
+    if (typeof filters.correct === 'boolean') params.set('correct', String(filters.correct))
+    if (filters.keyword) params.set('keyword', filters.keyword)
+    if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
+    if (filters.dateTo) params.set('dateTo', filters.dateTo)
+    return request(`/api/users/me/attempts?${params}`, { token })
+  },
 }
 
 export const adminApi = {
@@ -124,6 +163,17 @@ export const adminApi = {
   updateUserStatus(id, status, reason, token) {
     return request(`/api/admin/users/${id}/status`, {
       method: 'PUT', body: { status, reason }, token,
+    })
+  },
+  reports(status, page, size, token) {
+    const q = status ? `?status=${status}&page=${page}&size=${size}` : `?page=${page}&size=${size}`
+    return request(`/api/admin/reports${q}`, { token })
+  },
+  reviewReport(id, action, note, token) {
+    return request(`/api/admin/reports/${id}/review`, {
+      method: 'PUT',
+      body: { action, note },
+      token,
     })
   },
 }

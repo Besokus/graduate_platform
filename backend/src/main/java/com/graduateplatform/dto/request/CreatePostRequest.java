@@ -18,9 +18,6 @@ public class CreatePostRequest {
 
     private java.util.List<String> tags;
 
-    @NotNull
-    private Long authorId;
-
     private String visibility = "public"; // public / members
 
     private Boolean anonymous = false;

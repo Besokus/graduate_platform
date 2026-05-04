@@ -1,7 +1,10 @@
 package com.graduateplatform.controller;
 
+import com.graduateplatform.dto.request.ReviewReportRequest;
 import com.graduateplatform.dto.response.ApiResponse;
 import com.graduateplatform.service.AdminService;
+import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -41,10 +44,33 @@ public class AdminController {
     }
 
     @PutMapping("/posts/{id}/review")
-    public ApiResponse<?> reviewPost(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    public ApiResponse<?> reviewPost(@PathVariable Long id,
+                                     @RequestBody Map<String, String> body,
+                                     Authentication auth) {
         String action = body.get("action");
         String reason = body.getOrDefault("reason", "");
-        return ApiResponse.ok(adminService.reviewPost(id, action, reason), "操作成功");
+        Long adminId = (Long) auth.getPrincipal();
+        return ApiResponse.ok(adminService.reviewPost(id, adminId, action, reason), "操作成功");
+    }
+
+    @GetMapping("/reports")
+    public ApiResponse<?> reports(
+        @RequestParam(required = false) String status,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size
+    ) {
+        return ApiResponse.ok(adminService.getReports(status, page, size));
+    }
+
+    @PutMapping("/reports/{id}/review")
+    public ApiResponse<?> reviewReport(@PathVariable Long id,
+                                       @Valid @RequestBody ReviewReportRequest req,
+                                       Authentication auth) {
+        Long adminId = (Long) auth.getPrincipal();
+        return ApiResponse.ok(
+            adminService.reviewReport(id, adminId, req.getAction(), req.getNote()),
+            "举报处理完成"
+        );
     }
 
     // ==================== 用户管理 ====================

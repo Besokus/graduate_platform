@@ -50,6 +50,13 @@ public class Post {
     @Column(nullable = false)
     private String status; // DRAFT / PENDING / PUBLISHED / REJECTED / OFFLINE
 
+    @Column(length = 500)
+    private String reviewReason;
+
+    private Long reviewedById;
+
+    private LocalDateTime reviewedAt;
+
     @Builder.Default
     private Integer viewCount = 0;
     @Builder.Default
