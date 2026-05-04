@@ -110,6 +110,32 @@ export const userApi = {
   dashboard(token) {
     return request('/api/users/me/dashboard', { token })
   },
+  updateProfile(payload, token) {
+    return request('/api/users/me/profile', { method: 'PUT', body: payload, token })
+  },
+  myPosts(page, size, token) {
+    return request(`/api/users/me/posts?page=${page}&size=${size}`, { token })
+  },
+  updateMyPost(id, payload, token) {
+    return request(`/api/users/me/posts/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteMyPost(id, token) {
+    return request(`/api/users/me/posts/${id}`, { method: 'DELETE', token })
+  },
+  myComments(page, size, token) {
+    return request(`/api/users/me/comments?page=${page}&size=${size}`, { token })
+  },
+  deleteMyComment(id, token) {
+    return request(`/api/users/me/comments/${id}`, { method: 'DELETE', token })
+  },
+  myAttempts(page, size, filters = {}, token) {
+    const params = new URLSearchParams({ page: String(page), size: String(size) })
+    if (typeof filters.correct === 'boolean') params.set('correct', String(filters.correct))
+    if (filters.keyword) params.set('keyword', filters.keyword)
+    if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
+    if (filters.dateTo) params.set('dateTo', filters.dateTo)
+    return request(`/api/users/me/attempts?${params}`, { token })
+  },
 }
 
 export const adminApi = {
