@@ -1,5 +1,6 @@
 package com.graduateplatform.dto.request;
 
+import com.graduateplatform.constant.PostConstraints;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -11,7 +12,7 @@ public class UpdateMyPostRequest {
     private String title;
 
     @NotBlank
-    @Size(min = 20, max = 2000)
+    @Size(min = PostConstraints.CONTENT_MIN, max = PostConstraints.CONTENT_MAX)
     private String content;
 
     @NotBlank

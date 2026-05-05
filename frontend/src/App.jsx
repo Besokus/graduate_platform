@@ -10,6 +10,7 @@ import PracticeDetailPage from './pages/PracticeDetailPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
+import PostEditPage from './pages/PostEditPage.jsx'
 
 // 考研方向专属页面
 import KaoyanPage from './pages/kaoyan/KaoyanPage.jsx'
@@ -59,6 +60,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/profile" element={<ProfilePage />} />
+      <Route path="/profile/posts/:postId/edit" element={<PostEditPage />} />
 
       {/* 考研方向专属 */}
       <Route path="/kaoyan" element={<KaoyanPage />} />
