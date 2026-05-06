@@ -63,26 +63,223 @@ function buildMetaDraft(form = {}) {
   }
 }
 
+function normalizeMarkdown(value) {
+  return String(value || '').replace(/\r\n/g, '\n')
+}
+
+function splitTableRow(line) {
+  return line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim())
+}
+
+function isTableSeparator(line, columnCount) {
+  const cells = splitTableRow(line)
+  return cells.length === columnCount && cells.every((cell) => /^:?-{3,}:?$/.test(cell))
+}
+
+function isHeading(line) {
+  return /^#{1,6}\s+/.test(line)
+}
+
+function isRule(line) {
+  return /^(-{3,}|\*{3,}|_{3,})$/.test(line)
+}
+
+function isUnorderedList(line) {
+  return /^[-*+]\s+/.test(line)
+}
+
+function isOrderedList(line) {
+  return /^\d+\.\s+/.test(line)
+}
+
+function isTableStart(lines, index) {
+  if (index + 1 >= lines.length) return false
+  const headerCells = splitTableRow(lines[index])
+  if (headerCells.length <= 1) return false
+  return isTableSeparator(lines[index + 1], headerCells.length)
+}
+
+function parseMarkdownBlocks(content) {
+  const markdown = normalizeMarkdown(content)
+  if (!markdown) return []
+
+  const lines = markdown.split('\n')
+  const lineOffsets = []
+  let offset = 0
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    lineOffsets.push(offset)
+    offset += lines[lineIndex].length
+    if (lineIndex < lines.length - 1) {
+      offset += 1
+    }
+  }
+
+  const blocks = []
+  let index = 0
+  let blockId = 0
+
+  function pushBlock(startLine, endLine) {
+    const startOffset = lineOffsets[startLine]
+    const endOffset = lineOffsets[endLine] + lines[endLine].length
+    blocks.push({
+      id: blockId,
+      startLine,
+      endLine,
+      startOffset,
+      endOffset,
+      text: markdown.slice(startOffset, endOffset),
+    })
+    blockId += 1
+  }
+
+  while (index < lines.length) {
+    const trimmed = lines[index].trim()
+
+    if (!trimmed) {
+      index += 1
+      continue
+    }
+
+    if (trimmed.startsWith('```')) {
+      const startLine = index
+      index += 1
+      while (index < lines.length && !lines[index].trim().startsWith('```')) {
+        index += 1
+      }
+      if (index < lines.length) {
+        index += 1
+      }
+      pushBlock(startLine, Math.max(startLine, index - 1))
+      continue
+    }
+
+    if (isHeading(trimmed) || isRule(trimmed)) {
+      pushBlock(index, index)
+      index += 1
+      continue
+    }
+
+    if (isTableStart(lines, index)) {
+      const startLine = index
+      const headerCells = splitTableRow(lines[index])
+      index += 2
+
+      while (index < lines.length) {
+        const rowTrimmed = lines[index].trim()
+        if (!rowTrimmed) break
+
+        const rowCells = splitTableRow(lines[index])
+        if (rowCells.length !== headerCells.length) break
+        index += 1
+      }
+
+      pushBlock(startLine, Math.max(startLine, index - 1))
+      continue
+    }
+
+    if (trimmed.startsWith('>')) {
+      const startLine = index
+      index += 1
+      while (index < lines.length && lines[index].trim().startsWith('>')) {
+        index += 1
+      }
+      pushBlock(startLine, Math.max(startLine, index - 1))
+      continue
+    }
+
+    if (isUnorderedList(trimmed)) {
+      const startLine = index
+      index += 1
+      while (index < lines.length && isUnorderedList(lines[index].trim())) {
+        index += 1
+      }
+      pushBlock(startLine, Math.max(startLine, index - 1))
+      continue
+    }
+
+    if (isOrderedList(trimmed)) {
+      const startLine = index
+      index += 1
+      while (index < lines.length && isOrderedList(lines[index].trim())) {
+        index += 1
+      }
+      pushBlock(startLine, Math.max(startLine, index - 1))
+      continue
+    }
+
+    const startLine = index
+    index += 1
+    while (index < lines.length) {
+      const nextTrimmed = lines[index].trim()
+      if (!nextTrimmed) break
+      if (
+        nextTrimmed.startsWith('```') ||
+        isHeading(nextTrimmed) ||
+        nextTrimmed.startsWith('>') ||
+        isUnorderedList(nextTrimmed) ||
+        isOrderedList(nextTrimmed) ||
+        isRule(nextTrimmed) ||
+        isTableStart(lines, index)
+      ) {
+        break
+      }
+      index += 1
+    }
+    pushBlock(startLine, Math.max(startLine, index - 1))
+  }
+
+  return blocks
+}
+
+function replaceRange(text, startOffset, endOffset, replacement) {
+  const normalized = normalizeMarkdown(text)
+  const nextReplacement = normalizeMarkdown(replacement)
+  return normalized.slice(0, startOffset) + nextReplacement + normalized.slice(endOffset)
+}
+
 export default function PostEditPage() {
   const { postId } = useParams()
   const { token, isAuthed } = useAuth()
+
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [loadError, setLoadError] = useState('')
   const [actionError, setActionError] = useState('')
   const [saveMessage, setSaveMessage] = useState('')
+
   const [postMeta, setPostMeta] = useState(null)
   const [postForm, setPostForm] = useState(() => buildPostForm())
+
   const [metaModalOpen, setMetaModalOpen] = useState(false)
   const [metaDraft, setMetaDraft] = useState(() => buildMetaDraft())
   const [metaError, setMetaError] = useState('')
-  const [previewEditMode, setPreviewEditMode] = useState(false)
-  const previewEditorRef = useRef(null)
+
+  const [renderEditMode, setRenderEditMode] = useState(false)
+  const [activeBlockId, setActiveBlockId] = useState(null)
+  const [activeBlockDraft, setActiveBlockDraft] = useState('')
+
+  const sourceScrollRef = useRef(null)
+  const previewScrollRef = useRef(null)
+  const blockEditorRef = useRef(null)
+  const syncingSourceRef = useRef(false)
+  const syncingPreviewRef = useRef(false)
 
   const postContentLength = postForm.content.trim().length
   const postLineCount = postForm.content ? postForm.content.split('\n').length : 0
-  const statusLabel = statusLabelMap[(postMeta?.status || '').toUpperCase()] || (postMeta?.status || '未知状态')
+  const statusLabel =
+    statusLabelMap[(postMeta?.status || '').toUpperCase()] || (postMeta?.status || '未知状态')
   const tagList = useMemo(() => parseTagList(postForm.tags), [postForm.tags])
+  const markdownBlocks = useMemo(() => parseMarkdownBlocks(postForm.content), [postForm.content])
+  const activeBlock = useMemo(
+    () => markdownBlocks.find((block) => block.id === activeBlockId) || null,
+    [activeBlockId, markdownBlocks],
+  )
 
   useEffect(() => {
     let active = true
@@ -130,9 +327,39 @@ export default function PostEditPage() {
   }, [metaModalOpen])
 
   useEffect(() => {
-    if (!previewEditMode) return
-    previewEditorRef.current?.focus()
-  }, [previewEditMode])
+    if (!renderEditMode) return undefined
+
+    function handleKeydown(event) {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      if (activeBlockId !== null) {
+        setActiveBlockId(null)
+        setActiveBlockDraft('')
+      } else {
+        setRenderEditMode(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeydown)
+    return () => window.removeEventListener('keydown', handleKeydown)
+  }, [activeBlockId, renderEditMode])
+
+  useEffect(() => {
+    if (!renderEditMode) {
+      setActiveBlockId(null)
+      setActiveBlockDraft('')
+    }
+  }, [renderEditMode])
+
+  useEffect(() => {
+    if (!renderEditMode || activeBlockId === null) return
+    if (!activeBlock) {
+      setActiveBlockId(null)
+      setActiveBlockDraft('')
+      return
+    }
+    blockEditorRef.current?.focus()
+  }, [activeBlock, activeBlockId, renderEditMode])
 
   if (!isAuthed) {
     return <Navigate to="/login" replace />
@@ -144,12 +371,64 @@ export default function PostEditPage() {
     setPostForm((current) => ({ ...current, content: value }))
   }
 
-  function enterPreviewEditMode() {
-    setPreviewEditMode(true)
+  function syncScroll(fromElement, toElement, lockRef) {
+    if (!fromElement || !toElement) return
+
+    const fromScrollable = fromElement.scrollHeight - fromElement.clientHeight
+    const toScrollable = toElement.scrollHeight - toElement.clientHeight
+    if (fromScrollable <= 0 || toScrollable <= 0) return
+
+    const progress = fromElement.scrollTop / fromScrollable
+    lockRef.current = true
+    toElement.scrollTop = progress * toScrollable
+    window.requestAnimationFrame(() => {
+      lockRef.current = false
+    })
   }
 
-  function exitPreviewEditMode() {
-    setPreviewEditMode(false)
+  function handleSourceScroll() {
+    if (syncingSourceRef.current) return
+    syncScroll(sourceScrollRef.current, previewScrollRef.current, syncingPreviewRef)
+  }
+
+  function handlePreviewScroll() {
+    if (syncingPreviewRef.current) return
+    syncScroll(previewScrollRef.current, sourceScrollRef.current, syncingSourceRef)
+  }
+
+  function toggleRenderEditMode() {
+    setRenderEditMode((current) => !current)
+  }
+
+  function activateBlock(block) {
+    setActiveBlockId(block.id)
+    setActiveBlockDraft(block.text)
+    setActionError('')
+    setSaveMessage('')
+  }
+
+  function updateActiveBlockDraft(value) {
+    if (!activeBlock) return
+
+    const nextDraft = normalizeMarkdown(value)
+    setActiveBlockDraft(nextDraft)
+    setActionError('')
+    setSaveMessage('')
+
+    setPostForm((current) => {
+      const normalizedContent = normalizeMarkdown(current.content)
+      const currentBlocks = parseMarkdownBlocks(normalizedContent)
+      const currentActiveBlock = currentBlocks.find((block) => block.id === activeBlock.id)
+      if (!currentActiveBlock) return current
+
+      const nextContent = replaceRange(
+        normalizedContent,
+        currentActiveBlock.startOffset,
+        currentActiveBlock.endOffset,
+        nextDraft,
+      )
+      return { ...current, content: nextContent }
+    })
   }
 
   function openMetaModal() {
@@ -178,15 +457,21 @@ export default function PostEditPage() {
       title: nextTitle,
       tags: metaDraft.tags.trim(),
     }))
-    setPostMeta((current) => (current ? {
-      ...current,
-      title: nextTitle,
-      categoryCode: metaDraft.categoryCode,
-      category: getCategoryName(metaDraft.categoryCode),
-      tags: metaDraft.tags.trim(),
-      visibility: metaDraft.visibility,
-      anonymous: metaDraft.anonymous,
-    } : current))
+
+    setPostMeta((current) =>
+      current
+        ? {
+            ...current,
+            title: nextTitle,
+            categoryCode: metaDraft.categoryCode,
+            category: getCategoryName(metaDraft.categoryCode),
+            tags: metaDraft.tags.trim(),
+            visibility: metaDraft.visibility,
+            anonymous: metaDraft.anonymous,
+          }
+        : current,
+    )
+
     setSaveMessage('文章信息已更新到当前编辑页，记得点击“保存修改”提交。')
     closeMetaModal()
   }
@@ -248,11 +533,13 @@ export default function PostEditPage() {
       <main className="container post-editor-shell">
         <section className="post-editor-topbar">
           <div className="post-editor-topbar-main">
-            <Link className="post-editor-back" to="/profile">← 返回个人中心</Link>
+            <Link className="post-editor-back" to="/profile">
+              ← 返回个人中心
+            </Link>
             <div className="post-editor-heading">
               <span className="eyebrow">Markdown 编辑</span>
               <h1>{postForm.title.trim() || '未命名帖子'}</h1>
-              <p className="muted">正文在页面里专心编辑，标题、分类、标签和可见范围放进弹窗里维护。</p>
+              <p className="muted">正文支持双栏同步与渲染区块级编辑，元信息仍在弹窗维护。</p>
             </div>
           </div>
           <div className="post-editor-topbar-actions">
@@ -260,14 +547,11 @@ export default function PostEditPage() {
               编辑文章信息
             </button>
             {postMeta?.status === 'PUBLISHED' ? (
-              <Link className="btn outline" to={`/community/${postId}`}>查看帖子</Link>
+              <Link className="btn outline" to={`/community/${postId}`}>
+                查看帖子
+              </Link>
             ) : null}
-            <button
-              className="btn primary"
-              type="submit"
-              form="post-editor-form"
-              disabled={loading || saving}
-            >
+            <button className="btn primary" type="submit" form="post-editor-form" disabled={loading || saving}>
               {saving ? '保存中...' : '保存修改'}
             </button>
           </div>
@@ -277,7 +561,9 @@ export default function PostEditPage() {
           <section className="feature-card">
             <div className="error-text">{loadError}</div>
             <div className="comment-actions">
-              <Link className="btn ghost" to="/profile">返回个人中心</Link>
+              <Link className="btn ghost" to="/profile">
+                返回个人中心
+              </Link>
               <button className="btn outline" type="button" onClick={() => window.location.reload()}>
                 重新加载
               </button>
@@ -285,132 +571,150 @@ export default function PostEditPage() {
           </section>
         ) : null}
 
-        {loading ? (
-          <section className="feature-card">加载中...</section>
-        ) : null}
+        {loading ? <section className="feature-card">加载中...</section> : null}
 
         {!loading && !loadError ? (
           <>
             <section className="post-editor-status-strip">
               <span className="post-editor-chip">状态：{statusLabel}</span>
               <span className="post-editor-chip">分类：{getCategoryName(postForm.categoryCode)}</span>
-              <span className="post-editor-chip">字数：{postContentLength}/{POST_CONTENT_MAX}</span>
+              <span className="post-editor-chip">
+                字数：{postContentLength}/{POST_CONTENT_MAX}
+              </span>
               <span className="post-editor-chip">行数：{postLineCount}</span>
               <span className="post-editor-chip">更新：{formatDateTime(postMeta?.updatedAt)}</span>
             </section>
 
             <form id="post-editor-form" className="post-editor-grid" onSubmit={handleSave}>
-              <section className="feature-card post-editor-preview-card">
-                <div className="post-editor-section-head">
-                  <div>
+              <section className={`feature-card post-editor-workspace${renderEditMode ? ' is-render-edit' : ''}`}>
+                <div className="post-editor-workspace-head">
+                  <div className="post-editor-workspace-head-item">
+                    <span className="eyebrow">Source</span>
+                    <h2>Markdown 源码</h2>
+                  </div>
+                  <div className="post-editor-workspace-head-item align-right">
                     <span className="eyebrow">Preview</span>
-                    <h2>实时预览</h2>
-                    <p className="muted">这里更接近用户最终看到的帖子排版。</p>
-                  </div>
-                  <div className="post-editor-preview-actions">
-                    <span className="tag subtle">{postMeta?.contentFormat || 'markdown'}</span>
-                    <button
-                      className="btn ghost small"
-                      type="button"
-                      onClick={previewEditMode ? exitPreviewEditMode : enterPreviewEditMode}
-                    >
-                      {previewEditMode ? '退出原位编辑' : '预览区编辑'}
-                    </button>
-                  </div>
-                </div>
-
-                <div
-                  className={`post-editor-paper${previewEditMode ? ' is-editing' : ''}`}
-                  onDoubleClick={previewEditMode ? undefined : enterPreviewEditMode}
-                >
-                  <div className="post-editor-paper-header">
-                    <h2>{postForm.title.trim() || '未命名帖子'}</h2>
-                    <div className="post-editor-paper-meta">
-                      <span className="post-editor-meta-pill">{getCategoryName(postForm.categoryCode)}</span>
-                      <span className="post-editor-meta-pill">{visibilityLabelMap[postForm.visibility] || '公开可见'}</span>
-                      {postForm.anonymous ? <span className="post-editor-meta-pill">匿名发布</span> : null}
-                      {tagList.map((tag) => (
-                        <span className="post-editor-meta-pill" key={tag}>#{tag}</span>
-                      ))}
+                    <div className="post-editor-preview-head-row">
+                      <h2>渲染预览</h2>
+                      <button className="btn ghost small" type="button" onClick={toggleRenderEditMode}>
+                        {renderEditMode ? '退出渲染编辑' : '渲染区直接编辑'}
+                      </button>
                     </div>
                   </div>
-
-                  {previewEditMode ? (
-                    <div className="post-editor-inline-edit">
-                      <div className="post-editor-inline-edit-tip">
-                        现在可以直接在预览纸张里编辑正文，按 <kbd>Esc</kbd> 或点右上按钮退出。
-                      </div>
-                      <textarea
-                        ref={previewEditorRef}
-                        className="post-editor-paper-editor"
-                        value={postForm.content}
-                        onChange={(event) => updateContent(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Escape') {
-                            event.preventDefault()
-                            exitPreviewEditMode()
-                          }
-                        }}
-                        placeholder="在这里直接编辑 Markdown 正文内容..."
-                      ></textarea>
-                    </div>
-                  ) : postForm.content.trim() ? (
-                    <MarkdownContent content={postForm.content} />
-                  ) : (
-                    <div className="post-editor-empty">
-                      双击这张预览纸，或者点击上方“预览区编辑”，就能直接在这里改正文。
-                    </div>
-                  )}
-                </div>
-              </section>
-
-              <section className="feature-card post-editor-write-card">
-                <div className="post-editor-section-head">
-                  <div>
-                    <span className="eyebrow">Write</span>
-                    <h2>文章内容</h2>
-                    <p className="muted">你既可以在这里写，也可以双击左侧预览纸张进行原位编辑。</p>
-                  </div>
-                  <button className="btn ghost small" type="button" onClick={openMetaModal}>
-                    文章信息
-                  </button>
                 </div>
 
-                <div className="post-editor-document-header">
-                  <h3>{postForm.title.trim() || '未命名帖子'}</h3>
-                  <p>{postMeta?.sourceFileName || '在线 Markdown 编辑'}</p>
-                </div>
+                <div className="post-editor-workspace-grid">
+                  <section className="post-editor-source-pane">
+                    <textarea
+                      ref={sourceScrollRef}
+                      className={`post-editor-sync-textarea${renderEditMode ? ' is-readonly' : ''}`}
+                      value={postForm.content}
+                      onChange={(event) => updateContent(event.target.value)}
+                      onScroll={handleSourceScroll}
+                      readOnly={renderEditMode}
+                      onFocus={() => {
+                        if (!renderEditMode) return
+                        blockEditorRef.current?.focus()
+                      }}
+                      placeholder="在这里编辑 Markdown..."
+                      required
+                    ></textarea>
+                  </section>
 
-                <label className="field post-editor-content-field">
-                  <div className="post-editor-editor-toolbar">
-                    <span>Markdown 正文</span>
-                    <span className="field-tip">{postContentLength}/{POST_CONTENT_MAX}</span>
-                  </div>
-                  <textarea
-                    className="post-editor-textarea"
-                    value={postForm.content}
-                    onChange={(event) => updateContent(event.target.value)}
-                    placeholder="在这里继续完善你的 Markdown 正文内容..."
-                    required
-                  ></textarea>
-                </label>
+                  <section ref={previewScrollRef} className="post-editor-preview-pane" onScroll={handlePreviewScroll}>
+                    <article className="post-editor-preview-doc">
+                      <header className="post-editor-preview-header">
+                        <h2>{postForm.title.trim() || '未命名帖子'}</h2>
+                        <div className="post-editor-paper-meta">
+                          <span className="post-editor-meta-pill">{getCategoryName(postForm.categoryCode)}</span>
+                          <span className="post-editor-meta-pill">
+                            {visibilityLabelMap[postForm.visibility] || '公开可见'}
+                          </span>
+                          {postForm.anonymous ? <span className="post-editor-meta-pill">匿名发布</span> : null}
+                          {tagList.map((tag) => (
+                            <span className="post-editor-meta-pill" key={tag}>
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      </header>
 
-                {actionError ? <div className="error-text">{actionError}</div> : null}
-                {saveMessage ? <div className="notice-box post-editor-success">{saveMessage}</div> : null}
+                      {renderEditMode ? (
+                        <div className="post-editor-render-blocks">
+                          <div className="post-editor-render-tip">
+                            点击任意块直接编辑，其他块保持渲染。按 <kbd>Esc</kbd> 可退出当前块。
+                          </div>
 
-                <div className="post-editor-footer">
-                  <div className="post-editor-note">
-                    支持表格、代码块、任务列表、图片等 Markdown 内容。
-                  </div>
-                  <div className="post-editor-actions">
-                    <Link className="btn ghost" to="/profile">取消并返回</Link>
-                    <button className="btn primary" type="submit" disabled={saving}>
-                      {saving ? '保存中...' : '保存帖子'}
-                    </button>
-                  </div>
+                          {markdownBlocks.length === 0 ? (
+                            <textarea
+                              ref={blockEditorRef}
+                              className="post-editor-block-editor"
+                              value={postForm.content}
+                              onChange={(event) => updateContent(event.target.value)}
+                              placeholder="开始输入 Markdown..."
+                            ></textarea>
+                          ) : (
+                            markdownBlocks.map((block) => {
+                              const isActive = activeBlockId === block.id
+                              return (
+                                <section
+                                  className={`post-editor-render-block${isActive ? ' is-active' : ''}`}
+                                  key={block.id}
+                                  onClick={() => {
+                                    if (isActive) return
+                                    activateBlock(block)
+                                  }}
+                                >
+                                  {isActive ? (
+                                    <textarea
+                                      ref={blockEditorRef}
+                                      className="post-editor-block-editor"
+                                      value={activeBlockDraft}
+                                      onChange={(event) => updateActiveBlockDraft(event.target.value)}
+                                      onClick={(event) => event.stopPropagation()}
+                                      onKeyDown={(event) => {
+                                        if (event.key === 'Escape') {
+                                          event.preventDefault()
+                                          setActiveBlockId(null)
+                                          setActiveBlockDraft('')
+                                        }
+                                      }}
+                                    ></textarea>
+                                  ) : (
+                                    <MarkdownContent content={block.text} />
+                                  )}
+                                </section>
+                              )
+                            })
+                          )}
+                        </div>
+                      ) : postForm.content.trim() ? (
+                        <div className="post-editor-live-preview-layer">
+                          <MarkdownContent content={postForm.content} />
+                        </div>
+                      ) : (
+                        <div className="post-editor-empty">在左侧开始输入，右侧实时显示渲染效果。</div>
+                      )}
+                    </article>
+                  </section>
                 </div>
               </section>
             </form>
+
+            {actionError ? <div className="error-text">{actionError}</div> : null}
+            {saveMessage ? <div className="notice-box post-editor-success">{saveMessage}</div> : null}
+
+            <section className="post-editor-footer">
+              <div className="post-editor-note">支持“左侧源码编辑”和“右侧块级就地编辑”两种工作流。</div>
+              <div className="post-editor-actions">
+                <Link className="btn ghost" to="/profile">
+                  取消并返回
+                </Link>
+                <button className="btn primary" type="submit" form="post-editor-form" disabled={saving}>
+                  {saving ? '保存中...' : '保存帖子'}
+                </button>
+              </div>
+            </section>
           </>
         ) : null}
 
@@ -420,9 +724,11 @@ export default function PostEditPage() {
               <div className="modal-head">
                 <div>
                   <div className="modal-title">编辑文章信息</div>
-                  <div className="muted">这里维护标题、分类、标签和发布信息；正文仍然在页面主体里编辑。</div>
+                  <div className="muted">这里维护标题、分类、标签和发布信息；正文在主页面中编辑。</div>
                 </div>
-                <button className="icon-btn" type="button" onClick={closeMetaModal}>x</button>
+                <button className="icon-btn" type="button" onClick={closeMetaModal}>
+                  ×
+                </button>
               </div>
 
               <form className="modal-body" onSubmit={applyMetaChanges}>
@@ -433,7 +739,9 @@ export default function PostEditPage() {
                   </div>
                   <div className="post-editor-meta-tags">
                     <span className="post-editor-meta-pill">{statusLabel}</span>
-                    <span className="post-editor-meta-pill">{visibilityLabelMap[metaDraft.visibility] || '公开可见'}</span>
+                    <span className="post-editor-meta-pill">
+                      {visibilityLabelMap[metaDraft.visibility] || '公开可见'}
+                    </span>
                     {metaDraft.anonymous ? <span className="post-editor-meta-pill">匿名发布</span> : null}
                     <span className="post-editor-meta-pill">{getCategoryName(metaDraft.categoryCode)}</span>
                   </div>
@@ -450,7 +758,9 @@ export default function PostEditPage() {
                     }}
                     required
                   />
-                  <span className="field-tip">{metaDraft.title.trim().length}/{POST_TITLE_MAX}</span>
+                  <span className="field-tip">
+                    {metaDraft.title.trim().length}/{POST_TITLE_MAX}
+                  </span>
                 </label>
 
                 <div className="grid-two compact">
@@ -464,7 +774,9 @@ export default function PostEditPage() {
                       }}
                     >
                       {postCategoryOptions.map((item) => (
-                        <option key={item.code} value={item.code}>{item.name}</option>
+                        <option key={item.code} value={item.code}>
+                          {item.name}
+                        </option>
                       ))}
                     </select>
                   </label>
@@ -512,8 +824,12 @@ export default function PostEditPage() {
                 {metaError ? <div className="error-text">{metaError}</div> : null}
 
                 <div className="modal-actions">
-                  <button className="btn ghost" type="button" onClick={closeMetaModal}>取消</button>
-                  <button className="btn primary" type="submit">应用到当前编辑页</button>
+                  <button className="btn ghost" type="button" onClick={closeMetaModal}>
+                    取消
+                  </button>
+                  <button className="btn primary" type="submit">
+                    应用到当前编辑页
+                  </button>
                 </div>
               </form>
             </div>
