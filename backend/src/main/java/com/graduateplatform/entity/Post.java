@@ -21,7 +21,8 @@ public class Post {
     @Column(nullable = false, length = 100)
     private String title;
 
-    @Column(nullable = false, length = 5000)
+    @Lob
+    @Column(nullable = false, columnDefinition = "LONGTEXT")
     private String content;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -42,6 +43,12 @@ public class Post {
 
     @Column(length = 500)
     private String attachmentNote;
+
+    @Column(length = 30)
+    private String contentFormat;
+
+    @Column(length = 255)
+    private String sourceFileName;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id", nullable = false)

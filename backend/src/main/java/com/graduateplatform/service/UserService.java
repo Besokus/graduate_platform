@@ -96,25 +96,9 @@ public class UserService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Post> postPage = postRepository.findByAuthorIdOrderByCreatedAtDesc(userId, pageable);
 
-        List<Map<String, Object>> content = postPage.getContent().stream().map(post -> {
-            Map<String, Object> map = new LinkedHashMap<>();
-            map.put("id", post.getId());
-            map.put("title", post.getTitle());
-            map.put("content", post.getContent());
-            map.put("status", post.getStatus());
-            map.put("category", post.getCategory() != null ? post.getCategory().getName() : null);
-            map.put("categoryCode", post.getCategory() != null ? post.getCategory().getCode() : null);
-            map.put("tags", post.getTags());
-            map.put("visibility", post.getVisibility());
-            map.put("anonymous", post.getAnonymous());
-            map.put("viewCount", post.getViewCount());
-            map.put("commentCount", post.getCommentCount());
-            map.put("likeCount", post.getLikeCount());
-            map.put("favoriteCount", post.getFavoriteCount());
-            map.put("createdAt", post.getCreatedAt() != null ? post.getCreatedAt().toString() : null);
-            map.put("updatedAt", post.getUpdatedAt() != null ? post.getUpdatedAt().toString() : null);
-            return map;
-        }).toList();
+        List<Map<String, Object>> content = postPage.getContent().stream()
+            .map(this::toMyPostMap)
+            .toList();
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("content", content);
@@ -123,6 +107,15 @@ public class UserService {
         result.put("number", postPage.getNumber());
         result.put("size", postPage.getSize());
         return result;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getMyPost(Long userId, Long postId) {
+        userRepository.findById(userId)
+            .orElseThrow(() -> new BusinessException("用户不存在"));
+        Post post = postRepository.findByIdAndAuthorId(postId, userId)
+            .orElseThrow(() -> new BusinessException("帖子不存在或无权查看"));
+        return toMyPostMap(post);
     }
 
     @Transactional(readOnly = true)
@@ -259,6 +252,30 @@ public class UserService {
         return profile;
     }
 
+    private Map<String, Object> toMyPostMap(Post post) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", post.getId());
+        map.put("title", post.getTitle());
+        map.put("content", post.getContent());
+        map.put("status", post.getStatus());
+        map.put("category", post.getCategory() != null ? post.getCategory().getName() : null);
+        map.put("categoryCode", post.getCategory() != null ? post.getCategory().getCode() : null);
+        map.put("tags", post.getTags());
+        map.put("visibility", post.getVisibility());
+        map.put("anonymous", post.getAnonymous());
+        map.put("viewCount", post.getViewCount());
+        map.put("commentCount", post.getCommentCount());
+        map.put("likeCount", post.getLikeCount());
+        map.put("favoriteCount", post.getFavoriteCount());
+        map.put("hasAttachment", post.getHasAttachment());
+        map.put("attachmentNote", post.getAttachmentNote());
+        map.put("contentFormat", post.getContentFormat());
+        map.put("sourceFileName", post.getSourceFileName());
+        map.put("createdAt", post.getCreatedAt() != null ? post.getCreatedAt().toString() : null);
+        map.put("updatedAt", post.getUpdatedAt() != null ? post.getUpdatedAt().toString() : null);
+        return map;
+    }
+
     private String normalize(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -303,3 +320,4 @@ public class UserService {
         return LocalDate.parse(normalized).atTime(23, 59, 59);
     }
 }
+

@@ -1,14 +1,17 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 
 async function request(path, options = {}) {
+  const isFormData = options.body instanceof FormData
   const response = await fetch(`${API_BASE}${path}`, {
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
       ...(options.headers || {}),
     },
     method: options.method || 'GET',
-    body: options.body ? JSON.stringify(options.body) : undefined,
+    body: isFormData
+      ? options.body
+      : (options.body ? JSON.stringify(options.body) : undefined),
   })
 
   const data = await response.json().catch(() => null)
@@ -115,6 +118,9 @@ export const userApi = {
   },
   myPosts(page, size, token) {
     return request(`/api/users/me/posts?page=${page}&size=${size}`, { token })
+  },
+  myPostDetail(id, token) {
+    return request(`/api/users/me/posts/${id}`, { token })
   },
   updateMyPost(id, payload, token) {
     return request(`/api/users/me/posts/${id}`, { method: 'PUT', body: payload, token })

@@ -1,5 +1,6 @@
 package com.graduateplatform.service;
 
+import com.graduateplatform.constant.PostConstraints;
 import com.graduateplatform.dto.request.CreatePostRequest;
 import com.graduateplatform.entity.Post;
 import com.graduateplatform.entity.PostCategory;
@@ -18,7 +19,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -102,6 +105,9 @@ public class PostService {
             .orElseThrow(() -> new BusinessException("用户不存在"));
 
         ensureCanPost(author, Boolean.TRUE.equals(req.getHasAttachment()));
+        String content = extractMarkdownContent(req.getMarkdownFile());
+        String sourceFileName = normalizeSourceFileName(req.getMarkdownFile().getOriginalFilename());
+        String title = resolvePostTitle(req.getTitle(), sourceFileName, content);
 
         String status = req.getStatus();
         if ("DRAFT".equals(status)) {
@@ -114,14 +120,16 @@ public class PostService {
         }
 
         Post post = Post.builder()
-            .title(req.getTitle())
-            .content(req.getContent())
+            .title(title)
+            .content(content)
             .category(category)
             .tags(req.getTags() != null ? String.join(",", req.getTags()) : null)
             .visibility(req.getVisibility() != null ? req.getVisibility() : "public")
             .anonymous(Boolean.TRUE.equals(req.getAnonymous()))
             .hasAttachment(Boolean.TRUE.equals(req.getHasAttachment()))
             .attachmentNote(req.getAttachmentNote())
+            .contentFormat("markdown")
+            .sourceFileName(sourceFileName)
             .author(author)
             .status(status)
             .build();
@@ -229,6 +237,8 @@ public class PostService {
         map.put("anonymous", post.getAnonymous());
         map.put("hasAttachment", post.getHasAttachment());
         map.put("attachmentNote", post.getAttachmentNote());
+        map.put("contentFormat", post.getContentFormat() != null ? post.getContentFormat() : "plain");
+        map.put("sourceFileName", post.getSourceFileName());
         map.put("authorId", post.getAnonymous() ? null : post.getAuthor().getId());
         map.put("status", post.getStatus());
         map.put("reviewReason", post.getReviewReason());
@@ -307,5 +317,72 @@ public class PostService {
             return false;
         }
         return user.getLockedUntil().isAfter(LocalDateTime.now());
+    }
+
+    private String extractMarkdownContent(MultipartFile markdownFile) {
+        if (markdownFile == null || markdownFile.isEmpty()) {
+            throw new BusinessException("Please upload a markdown file.");
+        }
+
+        String sourceFileName = normalizeSourceFileName(markdownFile.getOriginalFilename());
+        String lowerFileName = sourceFileName.toLowerCase();
+        if (!lowerFileName.endsWith(".md") && !lowerFileName.endsWith(".markdown")) {
+            throw new BusinessException("Only .md or .markdown files are supported.");
+        }
+
+        String content;
+        try {
+            content = new String(markdownFile.getBytes(), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            throw new BusinessException("Failed to read the markdown file.");
+        }
+
+        content = content.replace("\r\n", "\n").trim();
+        if (content.length() < PostConstraints.CONTENT_MIN || content.length() > PostConstraints.CONTENT_MAX) {
+            throw new BusinessException(
+                "Markdown content must be between "
+                    + PostConstraints.CONTENT_MIN
+                    + " and "
+                    + PostConstraints.CONTENT_MAX
+                    + " characters."
+            );
+        }
+        return content;
+    }
+
+    private String normalizeSourceFileName(String originalFilename) {
+        if (originalFilename == null || originalFilename.isBlank()) {
+            return "post.md";
+        }
+        String normalized = originalFilename.replace("\\", "/").trim();
+        int lastSlash = normalized.lastIndexOf('/');
+        return lastSlash >= 0 ? normalized.substring(lastSlash + 1) : normalized;
+    }
+
+    private String resolvePostTitle(String inputTitle, String sourceFileName, String content) {
+        String normalizedTitle = inputTitle == null ? "" : inputTitle.trim();
+        if (normalizedTitle.isEmpty()) {
+            normalizedTitle = extractTitleFromMarkdown(content);
+        }
+        if (normalizedTitle.isEmpty()) {
+            normalizedTitle = sourceFileName.replaceFirst("\\.[^.]+$", "");
+        }
+        if (normalizedTitle.length() < 6 || normalizedTitle.length() > 60) {
+            throw new BusinessException("Title must be between 6 and 60 characters.");
+        }
+        return normalizedTitle;
+    }
+
+    private String extractTitleFromMarkdown(String content) {
+        for (String line : content.split("\n")) {
+            String trimmedLine = line.trim();
+            if (trimmedLine.startsWith("#")) {
+                String title = trimmedLine.replaceFirst("^#{1,6}\\s*", "").trim();
+                if (!title.isEmpty()) {
+                    return title;
+                }
+            }
+        }
+        return "";
     }
 }

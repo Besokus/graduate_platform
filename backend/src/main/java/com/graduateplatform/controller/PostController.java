@@ -5,6 +5,7 @@ import com.graduateplatform.dto.request.ReportPostRequest;
 import com.graduateplatform.dto.response.ApiResponse;
 import com.graduateplatform.service.PostService;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
@@ -39,8 +40,8 @@ public class PostController {
         return ApiResponse.ok(postService.getPostDetail(id, getCurrentUserId(auth), isAdmin(auth)));
     }
 
-    @PostMapping
-    public ApiResponse<?> create(@Valid @RequestBody CreatePostRequest req, Authentication auth) {
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<?> create(@Valid @ModelAttribute CreatePostRequest req, Authentication auth) {
         Long currentUserId = getCurrentUserId(auth);
         if (currentUserId == null) {
             return ApiResponse.fail("未登录或登录已失效");

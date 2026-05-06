@@ -46,6 +46,12 @@ public class UserController {
         return ApiResponse.ok(userService.getMyPosts(userId, page, size));
     }
 
+    @GetMapping("/me/posts/{postId}")
+    public ApiResponse<?> myPostDetail(@PathVariable Long postId, Authentication auth) {
+        Long userId = (Long) auth.getPrincipal();
+        return ApiResponse.ok(userService.getMyPost(userId, postId));
+    }
+
     @GetMapping("/me/comments")
     public ApiResponse<?> myComments(
         @RequestParam(defaultValue = "0") int page,

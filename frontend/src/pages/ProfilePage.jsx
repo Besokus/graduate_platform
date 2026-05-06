@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
+import MarkdownContent from '../components/MarkdownContent.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { userApi } from '../lib/api.js'
 import '../App.css'
@@ -41,6 +42,11 @@ const categoryOptions = [
   { code: 'experience', name: '经验分享' },
   { code: 'resource', name: '资料互助' },
 ]
+
+const POST_TITLE_MIN = 6
+const POST_TITLE_MAX = 60
+const POST_CONTENT_MIN = 20
+const POST_CONTENT_MAX = 50000
 
 const defaultForm = {
   name: '',
@@ -95,6 +101,7 @@ function ProfilePage() {
   })
   const [postSaving, setPostSaving] = useState(false)
   const [postActionMessage, setPostActionMessage] = useState('')
+  const postContentLength = postForm.content.trim().length
 
   const [attemptFilters, setAttemptFilters] = useState({
     correct: 'all',
@@ -249,7 +256,7 @@ function ProfilePage() {
     }
   }
 
-  function startEditPost(post) {
+  function _startEditPost(post) {
     setPostActionMessage('')
     setEditingPost(post)
     setPostForm({
@@ -270,6 +277,14 @@ function ProfilePage() {
   async function handleSavePost(event) {
     event.preventDefault()
     if (!editingPost) return
+    if (postForm.title.trim().length < POST_TITLE_MIN || postForm.title.trim().length > POST_TITLE_MAX) {
+      setPostActionMessage(`标题需在 ${POST_TITLE_MIN}-${POST_TITLE_MAX} 个字符之间`)
+      return
+    }
+    if (postContentLength < POST_CONTENT_MIN || postContentLength > POST_CONTENT_MAX) {
+      setPostActionMessage(`Markdown 正文需在 ${POST_CONTENT_MIN}-${POST_CONTENT_MAX} 个字符之间`)
+      return
+    }
     setPostSaving(true)
     setPostActionMessage('')
     try {
@@ -536,9 +551,9 @@ function ProfilePage() {
                         <div className="muted">{item.createdAt?.replace('T', ' ').slice(0, 16)}</div>
                         <div className="comment-actions">
                           <Link className="btn ghost small" to={`/community/${item.id}`}>查看</Link>
-                          <button className="btn outline small" type="button" onClick={() => startEditPost(item)}>
+                          <Link className="btn outline small" to={`/profile/posts/${item.id}/edit`}>
                             编辑
-                          </button>
+                          </Link>
                           <button
                             className="btn outline small"
                             type="button"
@@ -723,9 +738,12 @@ function ProfilePage() {
 
       {editingPost ? (
         <div className="modal-backdrop" role="dialog" aria-modal="true">
-          <div className="modal-card">
+          <div className="modal-card composer-modal markdown-edit-modal">
             <div className="modal-head">
-              <div className="modal-title">编辑帖子</div>
+              <div>
+                <div className="modal-title">编辑帖子</div>
+                <div className="muted">左侧预览，右侧实时编辑 Markdown 内容</div>
+              </div>
               <button className="icon-btn" type="button" onClick={cancelEditPost}>x</button>
             </div>
             <form className="modal-body" onSubmit={handleSavePost}>
@@ -734,7 +752,10 @@ function ProfilePage() {
                 <input
                   type="text"
                   value={postForm.title}
-                  onChange={(event) => setPostForm({ ...postForm, title: event.target.value })}
+                  onChange={(event) => {
+                    setPostActionMessage('')
+                    setPostForm({ ...postForm, title: event.target.value })
+                  }}
                   required
                 />
               </label>
@@ -742,7 +763,10 @@ function ProfilePage() {
                 <span>分类</span>
                 <select
                   value={postForm.categoryCode}
-                  onChange={(event) => setPostForm({ ...postForm, categoryCode: event.target.value })}
+                  onChange={(event) => {
+                    setPostActionMessage('')
+                    setPostForm({ ...postForm, categoryCode: event.target.value })
+                  }}
                 >
                   {categoryOptions.map((c) => (
                     <option key={c.code} value={c.code}>{c.name}</option>
@@ -754,7 +778,10 @@ function ProfilePage() {
                 <input
                   type="text"
                   value={postForm.tags}
-                  onChange={(event) => setPostForm({ ...postForm, tags: event.target.value })}
+                  onChange={(event) => {
+                    setPostActionMessage('')
+                    setPostForm({ ...postForm, tags: event.target.value })
+                  }}
                 />
               </label>
               <div className="grid-two compact">
@@ -762,7 +789,10 @@ function ProfilePage() {
                   <span>可见范围</span>
                   <select
                     value={postForm.visibility}
-                    onChange={(event) => setPostForm({ ...postForm, visibility: event.target.value })}
+                    onChange={(event) => {
+                      setPostActionMessage('')
+                      setPostForm({ ...postForm, visibility: event.target.value })
+                    }}
                   >
                     <option value="public">公开可见</option>
                     <option value="members">仅注册用户可见</option>
@@ -772,21 +802,45 @@ function ProfilePage() {
                   <input
                     type="checkbox"
                     checked={postForm.anonymous}
-                    onChange={(event) => setPostForm({ ...postForm, anonymous: event.target.checked })}
+                    onChange={(event) => {
+                      setPostActionMessage('')
+                      setPostForm({ ...postForm, anonymous: event.target.checked })
+                    }}
                   />
                   <span>匿名发布</span>
                 </label>
               </div>
-              <label className="field">
-                <span>正文</span>
-                <textarea
-                  rows="6"
-                  value={postForm.content}
-                  onChange={(event) => setPostForm({ ...postForm, content: event.target.value })}
-                  required
-                ></textarea>
-              </label>
-              <div className="comment-actions">
+              <div className="markdown-edit-grid">
+                <section className="markdown-edit-pane">
+                  <div className="markdown-edit-pane-head">
+                    <span>预览</span>
+                  </div>
+                  <div className="markdown-edit-preview">
+                    {postForm.content.trim() ? (
+                      <MarkdownContent content={postForm.content} />
+                    ) : (
+                      <p className="muted">在右侧输入 Markdown 后，这里会实时显示渲染效果。</p>
+                    )}
+                  </div>
+                </section>
+                <label className="field markdown-edit-pane">
+                  <div className="markdown-edit-pane-head">
+                    <span>Markdown 编辑</span>
+                    <span className="field-tip">{postContentLength}/{POST_CONTENT_MAX}</span>
+                  </div>
+                  <textarea
+                    className="markdown-edit-textarea"
+                    value={postForm.content}
+                    onChange={(event) => {
+                      setPostActionMessage('')
+                      setPostForm({ ...postForm, content: event.target.value })
+                    }}
+                    required
+                  ></textarea>
+                </label>
+              </div>
+              {postActionMessage ? <div className="error-text">{postActionMessage}</div> : null}
+              <div className="modal-actions">
                 <button className="btn ghost" type="button" onClick={cancelEditPost}>取消</button>
                 <button className="btn primary" type="submit" disabled={postSaving}>
                   {postSaving ? '保存中...' : '保存帖子'}

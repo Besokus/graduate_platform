@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import Navbar from '../../components/Navbar.jsx'
 import Footer from '../../components/Footer.jsx'
+import MarkdownContent from '../../components/MarkdownContent.jsx'
 import { adminApi } from '../../lib/api.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import '../../App.css'
@@ -21,7 +22,7 @@ export default function ReviewPage() {
   const [error, setError] = useState('')
   const [acting, setActing] = useState(null)
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
@@ -34,9 +35,9 @@ export default function ReviewPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filterStatus, token])
 
-  useEffect(() => { load() }, [filterStatus, token])
+  useEffect(() => { load() }, [load])
 
   async function handleAction(postId, action) {
     let reason = ''
@@ -106,7 +107,9 @@ export default function ReviewPage() {
                       {statusLabelMap[post.status]}
                     </span>
                   </div>
-                  <p className="muted">{post.content?.slice(0, 120)}...</p>
+                  <div className="notice-box review-markdown-preview">
+                    <MarkdownContent content={post.content || ''} />
+                  </div>
                   <div className="tag-row">
                     <span className="tag subtle">{post.category?.name}</span>
                     <span className="tag subtle">作者: {post.authorName || post.authorId}</span>
