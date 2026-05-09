@@ -34,3 +34,7 @@ desktop.ini
 *.class
 *.jar
 *.war
+
+# Local/generated artifacts
+.omx/
+docs/

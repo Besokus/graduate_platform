@@ -28,17 +28,21 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // 公开的 POST 请求
+                // ??? POST ??
                 .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login", "/api/auth/send-code").permitAll()
-                // 公开的 GET 请求
+                // ???????????? /api/** ????????? GET ??????
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                // ?????????/??????????????????
+                .requestMatchers(HttpMethod.GET, "/api/job/fairs/**", "/api/job/postings/**").permitAll()
+                .requestMatchers("/api/job/resume/**", "/api/job/applications/**", "/api/job/notifications/**",
+                    "/api/job/preferences/**", "/api/job/recommendations/**").authenticated()
+                // ??? GET ?????????/?????????
                 .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
-                // 需要认证的写操作
+                // ????????
                 .requestMatchers(HttpMethod.POST, "/api/posts/**").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/questions/*/attempt").authenticated()
                 .requestMatchers("/api/auth/me", "/api/auth/logout", "/api/users/**").authenticated()
-                // 管理员接口
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                // H2 控制台
+                // H2 ???
                 .requestMatchers("/h2-console/**").permitAll()
                 .anyRequest().authenticated()
             )
