@@ -59,6 +59,7 @@ export default function AdminPage() {
               <Link className="btn primary" to="/admin/review">内容审核</Link>
               <Link className="btn outline" to="/admin/users">用户管理</Link>
               <Link className="btn outline" to="/admin/reports">举报处理</Link>
+              <Link className="btn outline" to="/admin/employment">Employment management</Link>
             </div>
           </div>
         </section>
@@ -99,6 +100,14 @@ export default function AdminPage() {
               </div>
               <p className="muted">查看举报列表，支持“成立并下架”或“驳回”并留痕。</p>
               <Link className="btn primary small" to="/admin/reports">处理举报</Link>
+            </div>
+            <div className="track-card">
+              <div className="track-head">
+                <h3>Employment source data</h3>
+                <span className="tag subtle">JOB</span>
+              </div>
+              <p className="muted">Create career fairs and job postings, then trigger matched in-app notifications.</p>
+              <Link className="btn primary small" to="/admin/employment">Manage employment</Link>
             </div>
           </div>
         </section>

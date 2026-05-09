@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "active": false,
+  "skill": "",
+  "keyword": "$deep-interview",
+  "phase": "complete",
+  "activated_at": "2026-05-09T05:37:12.816Z",
+  "updated_at": "2026-05-09T05:40:14.814Z",
+  "source": "keyword-detector",
+  "input_lock": {
+    "active": true,
+    "scope": "deep-interview-auto-approval",
+    "acquired_at": "2026-05-09T04:19:36.400Z",
+    "released_at": "",
+    "blocked_inputs": [
+      "yes",
+      "y",
+      "proceed",
+      "continue",
+      "ok",
+      "sure",
+      "go ahead",
+      "next i should"
+    ],
+    "message": "Deep interview is active; auto-approval shortcuts are blocked until the interview finishes.",
+    "exit_reason": ""
+  },
+  "active_skills": [],
+  "session_id": "omx-1778304087109-yeatuf",
+  "post_launch_reconciled_at": "2026-05-09T05:40:14.814Z",
+  "post_launch_reconciliation_reason": "terminal_session_cleanup"
+}

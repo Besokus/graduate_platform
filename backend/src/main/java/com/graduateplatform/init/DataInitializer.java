@@ -7,6 +7,10 @@ import com.graduateplatform.community.repository.PostCategoryRepository;
 import com.graduateplatform.questionbank.entity.Question;
 import com.graduateplatform.questionbank.entity.QuestionBank;
 import com.graduateplatform.questionbank.repository.QuestionBankRepository;
+import com.graduateplatform.job.entity.CareerFair;
+import com.graduateplatform.job.entity.JobPosting;
+import com.graduateplatform.job.repository.CareerFairRepository;
+import com.graduateplatform.job.repository.JobPostingRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -17,13 +21,20 @@ public class DataInitializer implements CommandLineRunner {
     private final PostCategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final QuestionBankRepository bankRepository;
+    private final CareerFairRepository careerFairRepository;
+    private final JobPostingRepository jobPostingRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataInitializer(PostCategoryRepository categoryRepository, UserRepository userRepository,
-                           QuestionBankRepository bankRepository, PasswordEncoder passwordEncoder) {
+                           QuestionBankRepository bankRepository,
+                           CareerFairRepository careerFairRepository,
+                           JobPostingRepository jobPostingRepository,
+                           PasswordEncoder passwordEncoder) {
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
         this.bankRepository = bankRepository;
+        this.careerFairRepository = careerFairRepository;
+        this.jobPostingRepository = jobPostingRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -32,6 +43,7 @@ public class DataInitializer implements CommandLineRunner {
         initCategories();
         initUsers();
         initQuestionBanks();
+        initEmploymentData();
     }
 
     private void initCategories() {
@@ -54,24 +66,36 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void initUsers() {
-        if (userRepository.count() > 0) return;
-
         java.time.LocalDateTime thirtyDaysAgo = java.time.LocalDateTime.now().minusDays(30);
 
-        User admin = userRepository.save(User.builder()
-            .name("管理员").email("admin@graduate.local")
-            .password(passwordEncoder.encode("admin123"))
-            .target("kaoyan").role("admin").status("normal").build());
-        admin.setCreatedAt(thirtyDaysAgo);
-        userRepository.save(admin);
+        if (!userRepository.existsByEmail("admin@graduate.local")) {
+            User admin = userRepository.save(User.builder()
+                .name("Admin").email("admin@graduate.local")
+                .password(passwordEncoder.encode("admin123"))
+                .target("kaoyan").role("admin").status("normal").build());
+            admin.setCreatedAt(thirtyDaysAgo);
+            userRepository.save(admin);
+        }
 
-        User testUser = userRepository.save(User.builder()
-            .name("测试用户").email("test@graduate.local").phone("13800138000")
-            .password(passwordEncoder.encode("test1234"))
-            .school("上海理工大学").major("计算机科学").grade("2023级")
-            .target("kaoyan").role("user").status("normal").build());
-        testUser.setCreatedAt(thirtyDaysAgo);
-        userRepository.save(testUser);
+        if (!userRepository.existsByEmail("test@graduate.local")) {
+            User testUser = userRepository.save(User.builder()
+                .name("Test User").email("test@graduate.local").phone("13800138000")
+                .password(passwordEncoder.encode("test1234"))
+                .school("Graduate University").major("Computer Science").grade("2023")
+                .target("kaoyan").role("user").status("normal").build());
+            testUser.setCreatedAt(thirtyDaysAgo);
+            userRepository.save(testUser);
+        }
+
+        if (!userRepository.existsByEmail("job@graduate.local")) {
+            User jobUser = userRepository.save(User.builder()
+                .name("Employment Test User").email("job@graduate.local").phone("13800138001")
+                .password(passwordEncoder.encode("job1234"))
+                .school("Graduate University").major("Computer Science").grade("2024")
+                .target("job").role("user").status("normal").build());
+            jobUser.setCreatedAt(thirtyDaysAgo);
+            userRepository.save(jobUser);
+        }
     }
 
     private void initQuestionBanks() {
@@ -112,6 +136,78 @@ public class DataInitializer implements CommandLineRunner {
                 {"综合分析题中，分析原因的常见维度不包括", "[\"A.思想观念层面\",\"B.制度机制层面\",\"C.经济社会发展层面\",\"D.个人好恶层面\"]", "D", "综合分析应从客观维度分析原因，个人好恶不够客观。"},
                 {"申论文章的论证方法中，类比论证属于", "[\"A.事实论证\",\"B.道理论证\",\"C.比喻论证\",\"D.对比论证\"]", "C", "类比论证是比喻论证的一种形式。"},
             });
+    }
+
+
+    private void initEmploymentData() {
+        java.time.LocalDateTime fairStart = java.time.LocalDateTime.now().plusDays(7).withHour(14).withMinute(0).withSecond(0).withNano(0);
+        if (!careerFairRepository.existsByTitleAndCompanyNameAndStartTime("Internet Campus Career Fair", "Future Tech", fairStart)) {
+            careerFairRepository.save(CareerFair.builder()
+                .title("Internet Campus Career Fair")
+                .companyName("Future Tech")
+                .city("Shanghai")
+                .industry("Internet")
+                .targetRoles("Backend,Frontend,Product")
+                .location("Student Center A101")
+                .startTime(fairStart)
+                .endTime(fairStart.plusHours(2))
+                .applyDeadline(fairStart.plusDays(3))
+                .applyUrl("https://jobs.example.com/future-tech")
+                .description("Campus recruitment briefing and online application guidance.")
+                .active(true)
+                .build());
+        }
+
+        if (!careerFairRepository.existsByTitleAndCompanyNameAndStartTime("Smart Manufacturing Fair", "Harbor Equipment Group", fairStart.plusDays(3))) {
+            careerFairRepository.save(CareerFair.builder()
+                .title("Smart Manufacturing Fair")
+                .companyName("Harbor Equipment Group")
+                .city("Suzhou")
+                .industry("Manufacturing")
+                .targetRoles("QA,Embedded,Supply Chain")
+                .location("Career Center 2F")
+                .startTime(fairStart.plusDays(3))
+                .endTime(fairStart.plusDays(3).plusHours(3))
+                .applyDeadline(fairStart.plusDays(6))
+                .applyUrl("https://jobs.example.com/manufacturing")
+                .description("Joint smart manufacturing recruitment event.")
+                .active(true)
+                .build());
+        }
+
+        if (!jobPostingRepository.existsByTitleAndCompanyName("Java Backend Engineer", "Future Tech")) {
+            jobPostingRepository.save(JobPosting.builder()
+                .title("Java Backend Engineer")
+                .companyName("Future Tech")
+                .city("Shanghai")
+                .industry("Internet")
+                .roleType("Backend")
+                .salaryRange("18k-25k")
+                .educationRequirement("Bachelor or above")
+                .majorKeywords("Computer Science,Software Engineering,Information Systems")
+                .skillTags("Java,Spring Boot,MySQL,Redis")
+                .description("Build backend services for campus recruitment products.")
+                .applyUrl("https://jobs.example.com/java-backend")
+                .active(true)
+                .build());
+        }
+
+        if (!jobPostingRepository.existsByTitleAndCompanyName("Product Operations Trainee", "Harbor Equipment Group")) {
+            jobPostingRepository.save(JobPosting.builder()
+                .title("Product Operations Trainee")
+                .companyName("Harbor Equipment Group")
+                .city("Suzhou")
+                .industry("Manufacturing")
+                .roleType("Product Operations")
+                .salaryRange("10k-15k")
+                .educationRequirement("Bachelor or above")
+                .majorKeywords("Management,Automation,Computer Science")
+                .skillTags("Data Analysis,Communication,Project Management")
+                .description("Analyze product operations and join the graduate trainee program.")
+                .applyUrl("https://jobs.example.com/product-operation")
+                .active(true)
+                .build());
+        }
     }
 
     private void createBank(String name, String target, String subject, String desc, String difficulty, String[][] questions) {
