@@ -23,7 +23,9 @@ public class PostCategory {
 
     private String description;
 
+    @Builder.Default
     private Integer sortOrder = 0;
 
+    @Builder.Default
     private Boolean active = true;
 }
