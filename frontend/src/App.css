@@ -1609,6 +1609,133 @@
   background: linear-gradient(90deg, rgba(15, 118, 110, 0), rgba(15, 118, 110, 0.45), rgba(15, 118, 110, 0));
 }
 
+.study-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.82fr);
+  gap: 32px;
+  align-items: stretch;
+  padding-top: 48px;
+}
+
+.study-hero-main,
+.study-dashboard {
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+}
+
+.study-hero-main {
+  display: grid;
+  align-content: center;
+  gap: 18px;
+  padding: clamp(28px, 5vw, 48px);
+}
+
+.study-hero-main h1 {
+  font-size: clamp(2.3rem, 4vw, 3.8rem);
+  line-height: 1.05;
+}
+
+.study-dashboard {
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+}
+
+.study-list {
+  display: grid;
+  gap: 14px;
+}
+
+.study-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 8px 22px rgba(13, 27, 26, 0.06);
+}
+
+.study-row.is-complete {
+  background: rgba(240, 253, 250, 0.78);
+}
+
+.study-row-main {
+  display: grid;
+  gap: 8px;
+}
+
+.study-row-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #132321;
+}
+
+.study-row-side {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.study-status {
+  min-width: 72px;
+  border-radius: 999px;
+  padding: 8px 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.study-status.todo {
+  background: rgba(148, 163, 184, 0.18);
+  color: #475569;
+}
+
+.study-status.doing {
+  background: rgba(245, 158, 11, 0.16);
+  color: #92400e;
+}
+
+.study-status.done {
+  background: rgba(15, 118, 110, 0.14);
+  color: #0f766e;
+}
+
+.study-check {
+  min-width: 86px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.study-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: #0f766e;
+}
+
+.tag.danger {
+  background: rgba(220, 38, 38, 0.1);
+  color: #b91c1c;
+}
+
+.experience-card {
+  min-height: 250px;
+}
+
+.study-cta {
+  margin-top: 8px;
+}
+
 .markdown-table-wrap {
   overflow-x: auto;
 }
@@ -1670,6 +1797,10 @@
   }
 
   .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .study-hero {
     grid-template-columns: 1fr;
   }
 
@@ -1749,6 +1880,15 @@
   }
 
   .post-editor-topbar-actions {
+    justify-content: flex-start;
+  }
+
+  .study-row {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .study-row-side {
     justify-content: flex-start;
   }
 }
