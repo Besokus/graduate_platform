@@ -25,11 +25,11 @@ public class AttemptService {
         this.userRepository = userRepository;
     }
 
-    public Map<String, Object> submit(Long questionId, SubmitAttemptRequest req) {
+    public Map<String, Object> submit(Long questionId, Long userId, SubmitAttemptRequest req) {
         Question question = questionRepository.findById(questionId)
             .orElseThrow(() -> new BusinessException("题目不存在"));
 
-        User user = userRepository.findById(req.getUserId())
+        User user = userRepository.findById(userId)
             .orElseThrow(() -> new BusinessException("用户不存在"));
 
         boolean correct = question.getAnswer().equals(req.getAnswer().trim().toUpperCase());

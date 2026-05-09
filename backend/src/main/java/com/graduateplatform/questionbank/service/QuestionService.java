@@ -33,7 +33,11 @@ public class QuestionService {
         map.put("answer", q.getAnswer());
         map.put("analysis", q.getAnalysis());
         map.put("chapter", q.getChapter());
+        map.put("questionType", q.getQuestionType());
+        map.put("knowledgePoint", q.getKnowledgePoint());
         map.put("difficulty", q.getDifficulty());
+        map.put("year", q.getYear());
+        map.put("status", q.getStatus());
         return map;
     }
 }

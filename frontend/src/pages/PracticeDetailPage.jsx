@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Navbar from '../components/Navbar.jsx'
 import Footer from '../components/Footer.jsx'
 import { practiceApi } from '../lib/api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import '../App.css'
+
+const modeLabels = {
+  chapter: '章节练习',
+  random: '随机练习',
+  mock: '模拟练习',
+}
 
 function safeParseOptions(rawOptions) {
   if (Array.isArray(rawOptions)) return rawOptions
@@ -17,173 +23,124 @@ function safeParseOptions(rawOptions) {
   }
 }
 
-function mapQuestion(question) {
+function normalizeQuestion(question) {
   return {
     ...question,
-    options: safeParseOptions(question.optionsJson || question.options),
+    options: safeParseOptions(question.options || question.optionsJson),
     chapter: question.chapter || '未分章节',
-    difficulty: (question.difficulty || 'middle').toLowerCase(),
+    difficulty: question.difficulty || 'middle',
+    questionType: question.questionType || 'single',
   }
 }
 
 function PracticeDetailPage() {
   const { id } = useParams()
-  const { user, token, isAuthed } = useAuth()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const { token, isAuthed } = useAuth()
+  const canUsePractice = Boolean(isAuthed && token && token !== 'dev-token')
+  const [session, setSession] = useState(null)
   const [questions, setQuestions] = useState([])
-  const [attempts, setAttempts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [mode, setMode] = useState('chapter')
   const [answers, setAnswers] = useState({})
   const [markedMap, setMarkedMap] = useState({})
   const [result, setResult] = useState(null)
-  const [startedAt, setStartedAt] = useState(null)
-  const [submitMessage, setSubmitMessage] = useState('')
-  const [syncing, setSyncing] = useState(false)
-  const [syncMessage, setSyncMessage] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [savingQuestionId, setSavingQuestionId] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
 
   useEffect(() => {
+    if (!canUsePractice) {
+      setLoading(false)
+      setError('请先登录真实账号后再进入练习。')
+      return undefined
+    }
+
     let active = true
-    async function load() {
+    async function startOrLoadSession() {
       setLoading(true)
       setError('')
+      setMessage('')
       try {
-        const questionData = await practiceApi.questions(id)
-        if (active) {
-          setQuestions((questionData || []).map(mapQuestion))
-          setStartedAt(Date.now())
-          setAnswers({})
-          setMarkedMap({})
-          setResult(null)
-          setSubmitMessage('')
-          setSyncMessage('')
-          setCurrentIndex(0)
-        }
-        if (user?.id) {
-          const attemptData = await practiceApi.attempts(user.id)
-          if (active) {
-            setAttempts(attemptData || [])
-          }
+        const sessionId = searchParams.get('sessionId')
+        const data = sessionId
+          ? await practiceApi.session(sessionId, token)
+          : await practiceApi.createSession({
+              bankId: Number(id),
+              mode: searchParams.get('mode') || 'chapter',
+              chapter: searchParams.get('chapter') || undefined,
+              questionType: searchParams.get('questionType') || undefined,
+              difficulty: searchParams.get('difficulty') || undefined,
+              year: searchParams.get('year') ? Number(searchParams.get('year')) : undefined,
+            }, token)
+
+        if (!active) return
+        applySession(data)
+        if (!sessionId && data?.id) {
+          navigate(`/practice/${id}?sessionId=${data.id}`, { replace: true })
         }
       } catch (err) {
-        if (active) {
-          setError(err.message || '加载题目失败')
-        }
+        if (active) setError(err.message || '进入练习失败')
       } finally {
-        if (active) {
-          setLoading(false)
-        }
+        if (active) setLoading(false)
       }
     }
-    load()
+
+    startOrLoadSession()
     return () => {
       active = false
     }
-  }, [id, user?.id])
+  }, [canUsePractice, id, navigate, searchParams, token])
 
   const current = questions[currentIndex]
-
-  const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
-
-  const answeredCurrent = current ? answers[current.id] : ''
-
-  const historicalWrongCount = useMemo(
-    () => attempts.filter((item) => item.correct === false).length,
-    [attempts],
+  const answeredCount = useMemo(
+    () => Object.values(answers).filter(Boolean).length,
+    [answers],
   )
 
-  async function handleSubmitPaper() {
-    if (!questions.length) return
-    if (!startedAt) {
-      setSubmitMessage('练习尚未开始，请刷新后重试。')
-      return
-    }
-
-    const finishedAt = Date.now()
-    const answerEntries = questions
-      .map((question) => ({
-        question,
-        selected: answers[question.id] || '',
-      }))
-      .filter((entry) => entry.selected)
-
-    if (!answerEntries.length) {
-      setSubmitMessage('请至少完成 1 题后再交卷。')
-      return
-    }
-
-    const wrongQuestions = answerEntries
-      .filter((entry) => entry.selected !== entry.question.answer)
-      .map((entry) => ({
-        id: entry.question.id,
-        stem: entry.question.stem,
-        answer: entry.question.answer,
-        selected: entry.selected,
-        analysis: entry.question.analysis,
-      }))
-
-    const correctCount = answerEntries.length - wrongQuestions.length
-    const accuracy = Math.round((correctCount / answerEntries.length) * 100)
-    const durationSeconds = Math.max(1, Math.floor((finishedAt - startedAt) / 1000))
-
-    setResult({
-      totalCount: questions.length,
-      answeredCount: answerEntries.length,
-      correctCount,
-      wrongCount: wrongQuestions.length,
-      accuracy,
-      durationSeconds,
-      wrongQuestions,
-      finishedAt,
+  function applySession(data) {
+    const normalized = (data?.questions || []).map(normalizeQuestion)
+    const restoredAnswers = {}
+    normalized.forEach((question) => {
+      if (question.userAnswer) restoredAnswers[question.id] = question.userAnswer
     })
-    setSubmitMessage('已完成交卷，成绩和错题清单已生成。')
+    setSession(data)
+    setQuestions(normalized)
+    setAnswers(restoredAnswers)
+    setResult(data?.result || null)
+    setCurrentIndex(0)
   }
 
-  async function handleSyncAttempts() {
-    if (!result || !isAuthed || !user || !token) {
-      setSyncMessage('登录后可将本次记录同步到个人历史。')
-      return
-    }
-
-    const answerEntries = questions
-      .map((question) => ({
-        question,
-        selected: answers[question.id] || '',
-      }))
-      .filter((entry) => entry.selected)
-
-    if (!answerEntries.length) {
-      setSyncMessage('暂无可同步的答题记录。')
-      return
-    }
-
-    setSyncing(true)
-    setSyncMessage('')
+  async function handleAnswer(question, value) {
+    if (!session || session.status === 'submitted') return
+    setAnswers((prev) => ({ ...prev, [question.id]: value }))
+    setSavingQuestionId(question.id)
+    setMessage('')
     try {
-      const settled = await Promise.allSettled(
-        answerEntries.map((entry) =>
-          practiceApi.submitAttempt(
-            entry.question.id,
-            {
-              userId: user.id,
-              answer: entry.selected,
-            },
-            token,
-          ),
-        ),
-      )
-
-      const successResults = settled
-        .filter((item) => item.status === 'fulfilled')
-        .map((item) => item.value)
-
-      setAttempts((prev) => [...prev, ...successResults])
-      setSyncMessage(`已同步 ${successResults.length}/${answerEntries.length} 条记录。`)
+      await practiceApi.saveAnswer(session.id, question.id, value, token)
     } catch (err) {
-      setSyncMessage(err.message || '同步失败，请稍后重试。')
+      setMessage(err.message || '答案暂存失败，请稍后重试')
     } finally {
-      setSyncing(false)
+      setSavingQuestionId(null)
+    }
+  }
+
+  async function handleSubmitPaper() {
+    if (!session || submitting) return
+    setSubmitting(true)
+    setMessage('')
+    try {
+      const submitResult = await practiceApi.submitSession(session.id, token)
+      setResult(submitResult)
+      const refreshed = await practiceApi.session(session.id, token)
+      applySession(refreshed)
+      setMessage('交卷完成，系统已生成成绩和错题清单。')
+    } catch (err) {
+      setMessage(err.message || '交卷失败，请稍后重试')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -193,197 +150,161 @@ function PracticeDetailPage() {
       <main className="shell">
         <section className="section">
           <div className="section-head">
-            <p className="eyebrow">题库详情</p>
-            <h2>题号导航 + 答案暂存 + 一键交卷</h2>
-            <p className="muted">支持章节练习、随机练习、模拟练习，并自动生成成绩统计和错题清单。</p>
+            <p className="eyebrow">练习作答</p>
+            <h2>题号导航 + 答案暂存 + 自动判分</h2>
+            <p className="muted">客观题交卷后自动判分，主观题仅保存作答内容。</p>
             {error ? <div className="error-text">{error}</div> : null}
           </div>
 
-          <div className="grid-two">
+          {!canUsePractice ? (
             <div className="feature-card">
-              <div className="card-title">练习配置</div>
-              <div className="filter-grid">
-                <label className="field">
-                  <span>练习模式</span>
-                  <select value={mode} onChange={(event) => setMode(event.target.value)}>
-                    <option value="chapter">章节练习</option>
-                    <option value="random">随机练习</option>
-                    <option value="mock">模拟练习</option>
-                  </select>
-                </label>
-                <label className="field">
-                  <span>已作答进度</span>
-                  <div className="field-pill">{answeredCount}/{questions.length}</div>
-                </label>
-              </div>
-              <div className="progress-block">
-                <div className="progress-bar">
-                  <span
-                    style={{
-                      width: `${questions.length ? Math.round((answeredCount / questions.length) * 100) : 0}%`,
-                    }}
-                  ></span>
-                </div>
-              </div>
-              <div className="question-nav">
-                {questions.map((question, index) => {
-                  const answered = Boolean(answers[question.id])
-                  const marked = Boolean(markedMap[question.id])
-                  const active = index === currentIndex
-                  return (
-                    <button
-                      key={question.id}
-                      type="button"
-                      className={`question-nav-btn ${active ? 'active' : ''} ${answered ? 'answered' : ''} ${marked ? 'marked' : ''}`}
-                      onClick={() => setCurrentIndex(index)}
-                    >
-                      {index + 1}
-                    </button>
-                  )
-                })}
-              </div>
-              <button className="btn primary" type="button" onClick={handleSubmitPaper}>
-                交卷并查看结果
-              </button>
-              {submitMessage ? <div className="muted">{submitMessage}</div> : null}
+              <div className="card-title">需要登录</div>
+              <p className="muted">练习会话、答案暂存、交卷结果和错题本都需要后端认证。</p>
+              <Link className="btn primary small" to="/login">去登录</Link>
             </div>
-
-            <div className="feature-card metrics">
-              <div className="card-title">个人历史统计</div>
-              <div className="mini-grid">
-                <div className="mini-card">
-                  <div className="mini-value">{attempts.length}</div>
-                  <div className="mini-label">历史答题数</div>
-                </div>
-                <div className="mini-card">
-                  <div className="mini-value">{historicalWrongCount}</div>
-                  <div className="mini-label">历史错题数</div>
-                </div>
-                <div className="mini-card">
-                  <div className="mini-value">
-                    {attempts.length ? Math.round(((attempts.length - historicalWrongCount) / attempts.length) * 100) : 0}%
-                  </div>
-                  <div className="mini-label">历史正确率</div>
-                </div>
-              </div>
-              <p className="muted">登录后可同步本次记录至个人历史和错题本。</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="section">
-          {loading ? (
+          ) : loading ? (
             <div className="feature-card">加载中...</div>
           ) : !current ? (
-            <div className="feature-card">当前题库暂无题目。</div>
+            <div className="feature-card">当前条件下暂无可练习题目。</div>
           ) : (
-            <div className="grid-two">
-              <div className="feature-card soft">
-                <div className="track-head">
-                  <h3>第 {currentIndex + 1} 题</h3>
-                  <span className="tag subtle">{current.chapter}</span>
-                </div>
-                <div className="question-stem">{current.stem}</div>
-                <div className="question-options">
-                  {current.options.map((option, index) => {
-                    const optionKey = String.fromCharCode(65 + index)
-                    return (
-                      <button
-                        className={`option-btn ${answeredCurrent === optionKey ? 'active' : ''}`}
-                        key={optionKey}
-                        onClick={() =>
-                          setAnswers((prev) => ({
-                            ...prev,
-                            [current.id]: optionKey,
-                          }))
-                        }
-                        type="button"
-                      >
-                        <span className="option-key">{optionKey}</span>
-                        <span>{option}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-                <div className="question-actions">
-                  <button
-                    className="btn ghost"
-                    type="button"
-                    onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
-                  >
-                    上一题
-                  </button>
-                  <button
-                    className="btn outline"
-                    type="button"
-                    onClick={() =>
-                      setMarkedMap((prev) => ({
-                        ...prev,
-                        [current.id]: !prev[current.id],
-                      }))
-                    }
-                  >
-                    {markedMap[current.id] ? '取消标记' : '标记复查'}
-                  </button>
-                  <button
-                    className="btn ghost"
-                    type="button"
-                    onClick={() => setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1))}
-                  >
-                    下一题
-                  </button>
-                </div>
-                {result ? (
-                  <div className="analysis">
-                    <div>本题正确答案：{current.answer}</div>
-                    <div className="muted">{current.analysis || '暂无解析'}</div>
+            <>
+              <div className="grid-two">
+                <div className="feature-card">
+                  <div className="card-title">练习配置</div>
+                  <div className="mini-grid">
+                    <Metric value={modeLabels[session?.mode] || session?.mode} label="模式" />
+                    <Metric value={`${answeredCount}/${questions.length}`} label="进度" />
+                    <Metric value={session?.status === 'submitted' ? '已交卷' : '作答中'} label="状态" />
                   </div>
-                ) : null}
+                  <div className="progress-block">
+                    <div className="progress-bar">
+                      <span style={{ width: `${questions.length ? Math.round((answeredCount / questions.length) * 100) : 0}%` }}></span>
+                    </div>
+                  </div>
+                  <div className="question-nav">
+                    {questions.map((question, index) => {
+                      const active = index === currentIndex
+                      const answered = Boolean(answers[question.id])
+                      const marked = Boolean(markedMap[question.id])
+                      return (
+                        <button
+                          key={question.id}
+                          type="button"
+                          className={`question-nav-btn ${active ? 'active' : ''} ${answered ? 'answered' : ''} ${marked ? 'marked' : ''}`}
+                          onClick={() => setCurrentIndex(index)}
+                        >
+                          {index + 1}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {session?.status !== 'submitted' ? (
+                    <button className="btn primary" type="button" onClick={handleSubmitPaper} disabled={submitting}>
+                      {submitting ? '交卷中...' : '交卷并查看结果'}
+                    </button>
+                  ) : null}
+                  {message ? <div className="muted">{message}</div> : null}
+                </div>
+
+                <div className="feature-card metrics">
+                  <div className="card-title">本次结果</div>
+                  {!result ? (
+                    <p className="muted">交卷后展示总题数、正确数、错误数、用时、得分、正确率和错题清单。</p>
+                  ) : (
+                    <div className="result-stack">
+                      <div className="mini-grid">
+                        <Metric value={result.totalCount ?? 0} label="总题数" />
+                        <Metric value={result.correctCount ?? 0} label="正确数" />
+                        <Metric value={result.wrongCount ?? 0} label="错误数" />
+                      </div>
+                      <div className="metric-row">
+                        <span>得分 {result.score ?? '-'}</span>
+                        <span>正确率 {result.accuracy ?? 0}%</span>
+                        <span>用时 {formatDuration(result.durationSeconds || 0)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="feature-card">
-                <div className="card-title">本次交卷结果</div>
-                {!result ? (
-                  <p className="muted">交卷后展示总题数、正确率、用时和错题清单。</p>
-                ) : (
-                  <div className="result-stack">
-                    <div className="metric-row">
-                      <span>总题数 {result.totalCount}</span>
-                      <span>已作答 {result.answeredCount}</span>
+              <section className="section">
+                <div className="grid-two">
+                  <div className="feature-card soft">
+                    <div className="track-head">
+                      <h3>第 {currentIndex + 1} 题</h3>
+                      <span className="tag subtle">{current.chapter}</span>
                     </div>
                     <div className="metric-row">
-                      <span>正确 {result.correctCount}</span>
-                      <span>错误 {result.wrongCount}</span>
+                      <span>{current.questionType}</span>
+                      <span>{current.difficulty}</span>
+                      <span>{current.knowledgePoint || '未标注知识点'}</span>
                     </div>
-                    <div className="metric-row">
-                      <span>正确率 {result.accuracy}%</span>
-                      <span>用时 {result.durationSeconds}s</span>
-                    </div>
-                    <button
-                      className="btn primary small"
-                      type="button"
-                      onClick={handleSyncAttempts}
-                      disabled={syncing}
-                    >
-                      {syncing ? '同步中...' : '同步到历史记录'}
-                    </button>
-                    {syncMessage ? <div className="muted">{syncMessage}</div> : null}
-                    {result.wrongQuestions.length ? (
-                      <div className="wrong-list">
-                        {result.wrongQuestions.map((item) => (
-                          <div className="wrong-item" key={item.id}>
-                            <div className="wrong-title">{item.stem}</div>
-                            <div className="muted">你的答案：{item.selected} / 正确答案：{item.answer}</div>
-                          </div>
-                        ))}
-                      </div>
+                    <div className="question-stem">{current.stem}</div>
+                    {current.questionType === 'subjective' ? (
+                      <textarea
+                        className="text-area"
+                        rows={8}
+                        value={answers[current.id] || ''}
+                        disabled={session?.status === 'submitted'}
+                        onChange={(event) => setAnswers((prev) => ({ ...prev, [current.id]: event.target.value }))}
+                        onBlur={(event) => handleAnswer(current, event.target.value)}
+                        placeholder="请输入作答内容"
+                      />
                     ) : (
-                      <div className="muted">本次无错题，继续保持。</div>
+                      <div className="question-options">
+                        {current.options.map((option, index) => {
+                          const optionKey = String.fromCharCode(65 + index)
+                          return (
+                            <button
+                              className={`option-btn ${answers[current.id] === optionKey ? 'active' : ''}`}
+                              key={optionKey}
+                              onClick={() => handleAnswer(current, optionKey)}
+                              disabled={session?.status === 'submitted'}
+                              type="button"
+                            >
+                              <span className="option-key">{optionKey}</span>
+                              <span>{option}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
                     )}
+                    {savingQuestionId === current.id ? <div className="muted">答案暂存中...</div> : null}
+                    <div className="question-actions">
+                      <button className="btn ghost" type="button" onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}>上一题</button>
+                      <button
+                        className="btn outline"
+                        type="button"
+                        onClick={() => setMarkedMap((prev) => ({ ...prev, [current.id]: !prev[current.id] }))}
+                      >
+                        {markedMap[current.id] ? '取消标记' : '标记复查'}
+                      </button>
+                      <button className="btn ghost" type="button" onClick={() => setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1))}>下一题</button>
+                    </div>
+                    {session?.status === 'submitted' ? (
+                      <div className="analysis">
+                        <div>正确答案：{current.answer || '主观题待评阅'}</div>
+                        <div className="muted">{current.analysis || '暂无解析'}</div>
+                      </div>
+                    ) : null}
                   </div>
-                )}
-              </div>
-            </div>
+
+                  <div className="feature-card">
+                    <div className="card-title">错题清单</div>
+                    <div className="wrong-list">
+                      {(result?.wrongQuestions || []).map((item) => (
+                        <div className="wrong-item" key={item.id}>
+                          <div className="wrong-title">{item.stem}</div>
+                          <div className="muted">你的答案：{item.selected || '未作答'} / 正确答案：{item.answer}</div>
+                        </div>
+                      ))}
+                      {result && !result.wrongQuestions?.length ? <div className="muted">本次客观题无错题。</div> : null}
+                      {!result ? <p className="muted">交卷后错题会自动加入错题本。</p> : null}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </>
           )}
 
           <Link className="btn ghost" to="/practice">返回题库</Link>
@@ -392,6 +313,22 @@ function PracticeDetailPage() {
       <Footer />
     </div>
   )
+}
+
+function Metric({ value, label }) {
+  return (
+    <div className="mini-card">
+      <div className="mini-value">{value}</div>
+      <div className="mini-label">{label}</div>
+    </div>
+  )
+}
+
+function formatDuration(seconds) {
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m`
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
 }
 
 export default PracticeDetailPage

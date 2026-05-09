@@ -123,7 +123,14 @@ public class DataInitializer implements CommandLineRunner {
             String[] q = questions[i];
             bank.getQuestions().add(Question.builder()
                 .stem(q[0]).optionsJson(q[1]).answer(q[2]).analysis(q[3])
-                .chapter("第" + (i + 1) + "章").difficulty(difficulty).bank(bank).active(true)
+                .chapter("第" + (i + 1) + "章")
+                .questionType("single")
+                .knowledgePoint(subject + "知识点" + (i + 1))
+                .difficulty(difficulty)
+                .year(2024)
+                .status("published")
+                .bank(bank)
+                .active(true)
                 .build());
         }
 
