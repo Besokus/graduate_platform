@@ -30,14 +30,15 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // 公开的 POST 请求
                 .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login", "/api/auth/send-code").permitAll()
-                // 公开的 GET 请求
-                .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
                 // 需要认证的写操作
                 .requestMatchers(HttpMethod.POST, "/api/posts/**").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/questions/*/attempt").authenticated()
+                .requestMatchers("/api/practice/**").authenticated()
                 .requestMatchers("/api/auth/me", "/api/auth/logout", "/api/users/**").authenticated()
                 // 管理员接口
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                // 公开的 GET 请求
+                .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
                 // H2 控制台
                 .requestMatchers("/h2-console/**").permitAll()
                 .anyRequest().authenticated()

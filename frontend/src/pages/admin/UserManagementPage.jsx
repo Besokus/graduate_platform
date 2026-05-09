@@ -33,7 +33,7 @@ export default function UserManagementPage() {
   const { user, token, isAuthed } = useAuth()
   const [users, setUsers] = useState([])
   const [filterTarget, setFilterTarget] = useState('')
-  const [filterStatus, setFilterStatus] = useState('')
+  const filterStatus = ''
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [acting, setActing] = useState(null)
@@ -51,7 +51,7 @@ export default function UserManagementPage() {
     }
   }
 
-  useEffect(() => { load() }, [filterTarget, filterStatus, token])
+  useEffect(() => { load() }, [filterTarget, token])
 
   async function handleStatusChange(userId, newStatus) {
     setActing(userId)
