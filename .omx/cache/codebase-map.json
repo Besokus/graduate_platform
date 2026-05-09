@@ -1,9 +1,0 @@
-{
-  "version": 1,
-  "worktreeRoot": "E:\\桌面\\软件协同设计\\graduate_platform",
-  "gitDir": "E:\\桌面\\软件协同设计\\graduate_platform\\.git",
-  "indexMtimeMs": 1778241872587.5107,
-  "indexSize": 16646,
-  "map": "  frontend/: eslint.config, postEditor, api, vite.config",
-  "createdAt": "2026-05-08T15:47:13.830Z"
-}
