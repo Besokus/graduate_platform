@@ -7,6 +7,16 @@ import { useAuth } from '../../context/AuthContext.jsx'
 import '../../App.css'
 
 const statuses = ['TODO', 'APPLIED', 'VIEWED', 'WRITTEN_TEST', 'INTERVIEW', 'OFFER', 'REJECTED', 'CLOSED']
+const statusLabels = {
+  TODO: '待处理',
+  APPLIED: '已投递',
+  VIEWED: '已查看',
+  WRITTEN_TEST: '笔试中',
+  INTERVIEW: '面试中',
+  OFFER: '已录用',
+  REJECTED: '未通过',
+  CLOSED: '已关闭',
+}
 const emptyForm = { companyName: '', jobTitle: '', status: 'APPLIED', appliedAt: '', nextStepAt: '', notes: '' }
 const toApiPayload = form => ({ ...form, appliedAt: form.appliedAt || null, nextStepAt: form.nextStepAt || null })
 
@@ -41,11 +51,11 @@ export default function ApplicationTrackingPage() {
 
   return (
     <div className="app"><Navbar /><main className="shell"><section className="section">
-      <div className="section-head"><p className="eyebrow">Employment - Applications</p><h2>Application tracking</h2><p className="muted">Record external applications, maintain status transitions, and track next steps.</p>{error && <div className="error-text">{error}</div>}</div>
-      <div className="grid-two"><div className="feature-card"><div className="card-title">{editingId ? 'Edit application' : 'New application'}</div><div className="form-grid"><label className="field"><span>Company</span><input value={form.companyName} onChange={e => updateField('companyName', e.target.value)} /></label><label className="field"><span>Job title</span><input value={form.jobTitle} onChange={e => updateField('jobTitle', e.target.value)} /></label><label className="field"><span>Status</span><select value={form.status} onChange={e => updateField('status', e.target.value)}>{statuses.map(status => <option key={status}>{status}</option>)}</select></label><label className="field"><span>Applied at</span><input type="datetime-local" value={form.appliedAt} onChange={e => updateField('appliedAt', e.target.value)} /></label><label className="field"><span>Next step</span><input type="datetime-local" value={form.nextStepAt} onChange={e => updateField('nextStepAt', e.target.value)} /></label><label className="field"><span>Notes</span><textarea value={form.notes} onChange={e => updateField('notes', e.target.value)} /></label></div><button className="btn primary" type="button" onClick={saveRecord} disabled={saving}>{saving ? 'Saving...' : 'Save record'}</button>{editingId && <button className="btn ghost" type="button" onClick={() => { setEditingId(null); setForm(emptyForm) }}>Cancel edit</button>}</div>
-      <div className="feature-card metrics"><div className="card-title">Status values</div><div className="tag-row">{statuses.map(item => <span className="tag subtle" key={item}>{item}</span>)}</div></div></div>
-      <div className="track-grid">{loading && <div className="track-card"><p className="muted">Loading applications...</p></div>}{!loading && records.length === 0 && <div className="track-card"><p className="muted">No application records yet.</p></div>}{records.map(record => <div className="track-card" key={record.id}><div className="track-head"><h3>{record.companyName}</h3><span className="tag subtle">{record.status}</span></div><p className="muted">{record.jobTitle} - Applied: {record.appliedAt || 'Not set'}</p><p>{record.notes || 'No notes'}</p><button className="btn outline small" type="button" onClick={() => startEdit(record)}>Edit</button><button className="btn ghost small" type="button" onClick={() => deleteRecord(record.id)}>Delete</button></div>)}</div>
-      <Link className="btn ghost" to="/job">Back to employment panel</Link>
+      <div className="section-head"><p className="eyebrow">就业方向 - 投递进度</p><h2>投递进度跟踪</h2><p className="muted">记录平台外投递，维护状态流转，并跟踪下一步安排。</p>{error && <div className="error-text">{error}</div>}</div>
+      <div className="grid-two"><div className="feature-card"><div className="card-title">{editingId ? '编辑投递记录' : '新增投递记录'}</div><div className="form-grid"><label className="field"><span>公司</span><input value={form.companyName} onChange={e => updateField('companyName', e.target.value)} /></label><label className="field"><span>岗位名称</span><input value={form.jobTitle} onChange={e => updateField('jobTitle', e.target.value)} /></label><label className="field"><span>状态</span><select value={form.status} onChange={e => updateField('status', e.target.value)}>{statuses.map(status => <option key={status} value={status}>{statusLabels[status]}</option>)}</select></label><label className="field"><span>投递时间</span><input type="datetime-local" value={form.appliedAt} onChange={e => updateField('appliedAt', e.target.value)} /></label><label className="field"><span>下一步时间</span><input type="datetime-local" value={form.nextStepAt} onChange={e => updateField('nextStepAt', e.target.value)} /></label><label className="field"><span>备注</span><textarea value={form.notes} onChange={e => updateField('notes', e.target.value)} /></label></div><button className="btn primary" type="button" onClick={saveRecord} disabled={saving}>{saving ? '保存中...' : '保存记录'}</button>{editingId && <button className="btn ghost" type="button" onClick={() => { setEditingId(null); setForm(emptyForm) }}>取消编辑</button>}</div>
+      <div className="feature-card metrics"><div className="card-title">状态说明</div><div className="tag-row">{statuses.map(item => <span className="tag subtle" key={item}>{statusLabels[item]}</span>)}</div></div></div>
+      <div className="track-grid">{loading && <div className="track-card"><p className="muted">正在加载投递记录...</p></div>}{!loading && records.length === 0 && <div className="track-card"><p className="muted">暂无投递记录。</p></div>}{records.map(record => <div className="track-card" key={record.id}><div className="track-head"><h3>{record.companyName}</h3><span className="tag subtle">{statusLabels[record.status] || record.status}</span></div><p className="muted">{record.jobTitle} - 投递时间：{record.appliedAt || '未设置'}</p><p>{record.notes || '暂无备注'}</p><button className="btn outline small" type="button" onClick={() => startEdit(record)}>编辑</button><button className="btn ghost small" type="button" onClick={() => deleteRecord(record.id)}>删除</button></div>)}</div>
+      <Link className="btn ghost" to="/job">返回就业面板</Link>
     </section></main><Footer /></div>
   )
 }

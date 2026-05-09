@@ -6,8 +6,8 @@ import { employmentApi } from '../../lib/api.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import '../../App.css'
 
-const templates = ['General campus resume', 'Technical role resume', 'Product operations resume']
-const emptyResume = { templateType: 'General campus resume', baseInfo: '', education: '', projects: '', internships: '', skills: '', selfEvaluation: '' }
+const templates = ['通用校招简历', '技术岗位简历', '产品运营简历']
+const emptyResume = { templateType: '通用校招简历', baseInfo: '', education: '', projects: '', internships: '', skills: '', selfEvaluation: '' }
 
 export default function ResumePage() {
   const { token, isAuthed, loading: authLoading } = useAuth()
@@ -29,7 +29,7 @@ export default function ResumePage() {
     try {
       const saved = await employmentApi.saveResume(resume, token)
       setResume({ ...emptyResume, ...saved })
-      setMessage('Online resume saved. Refresh the page to verify persistence.')
+      setMessage('在线简历已保存，可刷新页面验证持久化结果。')
     } catch (e) { setError(e.message) } finally { setSaving(false) }
   }
 
@@ -37,19 +37,19 @@ export default function ResumePage() {
 
   return (
     <div className="app"><Navbar /><main className="shell"><section className="section">
-      <div className="section-head"><p className="eyebrow">Employment - Resume</p><h2>Online resume</h2><p className="muted">Maintain one persisted online resume for recommendations and application tracking.</p>{error && <div className="error-text">{error}</div>}{message && <div className="notice-box">{message}</div>}</div>
-      {loading ? <div className="feature-card"><p className="muted">Loading resume...</p></div> : <div className="grid-two">
-        <div className="feature-card"><div className="card-title">Template</div>{templates.map(item => <label className="room-row" key={item}><div><div className="room-title">{item}</div><div className="room-sub">Saved as structured online text.</div></div><input type="radio" checked={resume.templateType === item} onChange={() => updateField('templateType', item)} /></label>)}<button className="btn primary" type="button" onClick={saveResume} disabled={saving}>{saving ? 'Saving...' : 'Save resume'}</button></div>
-        <div className="feature-card metrics"><div className="card-title">Resume fields</div><div className="form-grid">
-          <label className="field"><span>Base info</span><textarea value={resume.baseInfo || ''} onChange={e => updateField('baseInfo', e.target.value)} placeholder="Name, contact, target role" /></label>
-          <label className="field"><span>Education</span><textarea value={resume.education || ''} onChange={e => updateField('education', e.target.value)} placeholder="School, major, courses" /></label>
-          <label className="field"><span>Projects</span><textarea value={resume.projects || ''} onChange={e => updateField('projects', e.target.value)} placeholder="Project background, role, outcomes" /></label>
-          <label className="field"><span>Internships</span><textarea value={resume.internships || ''} onChange={e => updateField('internships', e.target.value)} placeholder="Company, role, impact" /></label>
-          <label className="field"><span>Skills</span><textarea value={resume.skills || ''} onChange={e => updateField('skills', e.target.value)} placeholder="Java, Spring Boot, SQL" /></label>
-          <label className="field"><span>Self evaluation</span><textarea value={resume.selfEvaluation || ''} onChange={e => updateField('selfEvaluation', e.target.value)} placeholder="Strengths and career goal" /></label>
+      <div className="section-head"><p className="eyebrow">就业方向 - 简历</p><h2>在线简历</h2><p className="muted">维护一份可持久保存的在线简历，用于岗位推荐和投递进度管理。</p>{error && <div className="error-text">{error}</div>}{message && <div className="notice-box">{message}</div>}</div>
+      {loading ? <div className="feature-card"><p className="muted">正在加载简历...</p></div> : <div className="grid-two">
+        <div className="feature-card"><div className="card-title">简历模板</div>{templates.map(item => <label className="room-row" key={item}><div><div className="room-title">{item}</div><div className="room-sub">以结构化在线文本保存。</div></div><input type="radio" checked={resume.templateType === item} onChange={() => updateField('templateType', item)} /></label>)}<button className="btn primary" type="button" onClick={saveResume} disabled={saving}>{saving ? '保存中...' : '保存简历'}</button></div>
+        <div className="feature-card metrics"><div className="card-title">简历内容</div><div className="form-grid">
+          <label className="field"><span>基本信息</span><textarea value={resume.baseInfo || ''} onChange={e => updateField('baseInfo', e.target.value)} placeholder="姓名、联系方式、目标岗位" /></label>
+          <label className="field"><span>教育经历</span><textarea value={resume.education || ''} onChange={e => updateField('education', e.target.value)} placeholder="学校、专业、核心课程" /></label>
+          <label className="field"><span>项目经历</span><textarea value={resume.projects || ''} onChange={e => updateField('projects', e.target.value)} placeholder="项目背景、个人职责、成果产出" /></label>
+          <label className="field"><span>实习经历</span><textarea value={resume.internships || ''} onChange={e => updateField('internships', e.target.value)} placeholder="公司、岗位、工作影响" /></label>
+          <label className="field"><span>技能特长</span><textarea value={resume.skills || ''} onChange={e => updateField('skills', e.target.value)} placeholder="Java、Spring Boot、SQL" /></label>
+          <label className="field"><span>自我评价</span><textarea value={resume.selfEvaluation || ''} onChange={e => updateField('selfEvaluation', e.target.value)} placeholder="个人优势与职业目标" /></label>
         </div></div>
       </div>}
-      <Link className="btn ghost" to="/job">Back to employment panel</Link>
+      <Link className="btn ghost" to="/job">返回就业面板</Link>
     </section></main><Footer /></div>
   )
 }
