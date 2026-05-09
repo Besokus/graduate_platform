@@ -12,11 +12,12 @@
 
 ## 当前实现策略
 
-第一版采用前端本地 MVP：
+第一版采用前端本地 MVP，第二版补充独立后端接口：
 
-- 不新增后端接口。
-- 不修改数据库结构。
-- 使用 `localStorage` 保存留学时间线和材料清单。
+- 后端新增独立包 `backend/src/main/java/com/graduateplatform/studyabroad`。
+- 时间线和材料清单支持真实接口保存。
+- 真实登录 token 优先访问后端接口。
+- 开发模式 `dev-token` 或后端不可用时，继续使用 `localStorage` 演示数据。
 - 留学经验页先做筛选展示，并链接到现有社区模块的留学分类。
 
 ## 谨慎改动范围
@@ -32,6 +33,6 @@
 
 ## 后续可扩展方向
 
-- 新增独立后端包 `backend/src/main/java/com/graduateplatform/studyabroad`。
-- 将时间线、材料清单改为真实接口保存。
+- 为时间线和材料清单增加编辑弹窗。
+- 为后端接口补充测试用例。
 - 将经验发布与社区 `liuxue` 分类深度打通。

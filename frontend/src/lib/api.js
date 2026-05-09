@@ -144,6 +144,33 @@ export const userApi = {
   },
 }
 
+export const studyAbroadApi = {
+  timeline(token) {
+    return request('/api/studyabroad/timeline', { token })
+  },
+  createTimeline(payload, token) {
+    return request('/api/studyabroad/timeline', { method: 'POST', body: payload, token })
+  },
+  updateTimeline(id, payload, token) {
+    return request(`/api/studyabroad/timeline/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteTimeline(id, token) {
+    return request(`/api/studyabroad/timeline/${id}`, { method: 'DELETE', token })
+  },
+  materials(token) {
+    return request('/api/studyabroad/materials', { token })
+  },
+  createMaterial(payload, token) {
+    return request('/api/studyabroad/materials', { method: 'POST', body: payload, token })
+  },
+  updateMaterial(id, payload, token) {
+    return request(`/api/studyabroad/materials/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteMaterial(id, token) {
+    return request(`/api/studyabroad/materials/${id}`, { method: 'DELETE', token })
+  },
+}
+
 export const adminApi = {
   dashboard(token) {
     return request('/api/admin/dashboard', { token })

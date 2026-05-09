@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Navbar from '../../components/Navbar.jsx'
 import Footer from '../../components/Footer.jsx'
+import { useAuth } from '../../context/AuthContext.jsx'
+import { studyAbroadApi } from '../../lib/api.js'
 import {
   getMaterialItems,
   getTimelineItems,
@@ -41,23 +43,64 @@ function getSoonestPending(items) {
 }
 
 export default function StudyAbroadPage() {
+  const { token } = useAuth()
   const [timelineItems] = useState(() => getTimelineItems())
   const [materialItems] = useState(() => getMaterialItems())
+  const [remoteTimelineItems, setRemoteTimelineItems] = useState(null)
+  const [remoteMaterialItems, setRemoteMaterialItems] = useState(null)
+  const [syncNote, setSyncNote] = useState('')
+
+  const canUseRemote = Boolean(token && token !== 'dev-token')
+
+  useEffect(() => {
+    if (!canUseRemote) return undefined
+    let active = true
+
+    async function loadRemoteSummary() {
+      try {
+        const [timeline, materials] = await Promise.all([
+          studyAbroadApi.timeline(token),
+          studyAbroadApi.materials(token),
+        ])
+        if (active) {
+          setRemoteTimelineItems(timeline)
+          setRemoteMaterialItems(materials)
+          setSyncNote('已加载后端保存的留学申请数据。')
+        }
+      } catch {
+        if (active) {
+          setSyncNote('后端暂不可用，当前展示本地演示数据。')
+        }
+      }
+    }
+
+    loadRemoteSummary()
+    return () => {
+      active = false
+    }
+  }, [canUseRemote, token])
+
+  const displayTimelineItems = remoteTimelineItems || timelineItems
+  const displayMaterialItems = remoteMaterialItems || materialItems
 
   const summary = useMemo(() => {
-    const doneNodes = timelineItems.filter((item) => item.status === 'done').length
-    const doneMaterials = materialItems.filter((item) => item.completed).length
-    const nextNode = getSoonestPending(timelineItems)
+    const doneNodes = displayTimelineItems.filter((item) => item.status === 'done').length
+    const doneMaterials = displayMaterialItems.filter((item) => item.completed).length
+    const nextNode = getSoonestPending(displayTimelineItems)
     return {
-      nodeTotal: timelineItems.length,
+      nodeTotal: displayTimelineItems.length,
       nodeDone: doneNodes,
-      nodeRate: timelineItems.length ? Math.round((doneNodes / timelineItems.length) * 100) : 0,
-      materialTotal: materialItems.length,
+      nodeRate: displayTimelineItems.length
+        ? Math.round((doneNodes / displayTimelineItems.length) * 100)
+        : 0,
+      materialTotal: displayMaterialItems.length,
       materialDone: doneMaterials,
-      materialRate: materialItems.length ? Math.round((doneMaterials / materialItems.length) * 100) : 0,
+      materialRate: displayMaterialItems.length
+        ? Math.round((doneMaterials / displayMaterialItems.length) * 100)
+        : 0,
       nextNode,
     }
-  }, [timelineItems, materialItems])
+  }, [displayTimelineItems, displayMaterialItems])
 
   return (
     <div className="app">
@@ -88,7 +131,7 @@ export default function StudyAbroadPage() {
               </div>
               <div className="mini-card">
                 <div className="mini-value">{summary.nodeTotal + summary.materialTotal}</div>
-                <div className="mini-label">本地事项</div>
+                <div className="mini-label">申请事项</div>
               </div>
             </div>
             <div className="progress-block">
@@ -107,13 +150,19 @@ export default function StudyAbroadPage() {
                   : '所有申请节点都已完成'}
               </p>
             </div>
+            {syncNote ? (
+              <div className="notice-box">
+                <strong>数据来源</strong>
+                <p className="muted">{syncNote}</p>
+              </div>
+            ) : null}
           </div>
         </section>
 
         <section className="section">
           <div className="section-head">
             <h2>专属功能</h2>
-            <p className="muted">当前版本采用本地保存，刷新页面后仍可保留你的演示数据。</p>
+            <p className="muted">真实登录后使用后端保存，开发模式下保留本地演示数据。</p>
           </div>
           <div className="track-grid">
             {features.map((item) => (

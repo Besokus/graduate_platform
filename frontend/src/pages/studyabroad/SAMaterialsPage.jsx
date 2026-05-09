@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Navbar from '../../components/Navbar.jsx'
 import Footer from '../../components/Footer.jsx'
+import { useAuth } from '../../context/AuthContext.jsx'
+import { studyAbroadApi } from '../../lib/api.js'
 import {
   getMaterialItems,
   saveMaterialItems,
@@ -16,8 +18,10 @@ function createId() {
 }
 
 export default function SAMaterialsPage() {
+  const { token } = useAuth()
   const [items, setItems] = useState(() => getMaterialItems())
   const [filters, setFilters] = useState({ country: '全部国家', stage: '全部阶段', keyword: '' })
+  const [syncNote, setSyncNote] = useState('')
   const [form, setForm] = useState({
     title: '',
     country: '通用',
@@ -27,7 +31,33 @@ export default function SAMaterialsPage() {
     note: '',
   })
 
-  function updateItems(nextItems) {
+  const canUseRemote = Boolean(token && token !== 'dev-token')
+
+  useEffect(() => {
+    if (!canUseRemote) return undefined
+    let active = true
+
+    async function loadRemoteMaterials() {
+      try {
+        const remoteItems = await studyAbroadApi.materials(token)
+        if (active) {
+          setItems(remoteItems)
+          setSyncNote('当前使用后端数据库保存材料清单。')
+        }
+      } catch {
+        if (active) {
+          setSyncNote('后端暂不可用，当前使用本地演示材料。')
+        }
+      }
+    }
+
+    loadRemoteMaterials()
+    return () => {
+      active = false
+    }
+  }, [canUseRemote, token])
+
+  function updateLocalItems(nextItems) {
     setItems(nextItems)
     saveMaterialItems(nextItems)
   }
@@ -49,35 +79,69 @@ export default function SAMaterialsPage() {
     return { completed, rate }
   }, [items])
 
-  function addItem(event) {
+  async function addItem(event) {
     event.preventDefault()
     const title = form.title.trim()
     if (!title) return
 
-    updateItems([
-      ...items,
-      {
-        id: createId(),
-        title,
-        country: form.country,
-        stage: form.stage,
-        category: form.category.trim() || '其他材料',
-        deadline: form.deadline,
-        completed: false,
-        note: form.note.trim() || '暂无备注',
-      },
-    ])
+    const payload = {
+      title,
+      country: form.country,
+      stage: form.stage,
+      category: form.category.trim() || '其他材料',
+      deadline: form.deadline,
+      completed: false,
+      note: form.note.trim() || '暂无备注',
+    }
+
+    if (canUseRemote) {
+      try {
+        const created = await studyAbroadApi.createMaterial(payload, token)
+        setItems([...items, created].sort((a, b) => a.deadline.localeCompare(b.deadline)))
+        setSyncNote('材料已保存到后端数据库。')
+      } catch (error) {
+        setSyncNote(error.message || '后端保存失败，请稍后再试。')
+        return
+      }
+    } else {
+      updateLocalItems([...items, { id: createId(), ...payload }])
+    }
     setForm({ ...form, title: '', note: '' })
   }
 
-  function toggleCompleted(targetId) {
-    updateItems(items.map((item) => (
-      item.id === targetId ? { ...item, completed: !item.completed } : item
+  async function toggleCompleted(targetId) {
+    const targetItem = items.find((item) => item.id === targetId)
+    if (!targetItem) return
+    const nextItem = { ...targetItem, completed: !targetItem.completed }
+
+    if (canUseRemote) {
+      try {
+        const updated = await studyAbroadApi.updateMaterial(targetId, nextItem, token)
+        setItems(items.map((item) => (item.id === targetId ? updated : item)))
+        setSyncNote('材料状态已同步到后端。')
+      } catch (error) {
+        setSyncNote(error.message || '材料状态同步失败，请稍后再试。')
+      }
+      return
+    }
+
+    updateLocalItems(items.map((item) => (
+      item.id === targetId ? nextItem : item
     )))
   }
 
-  function removeItem(targetId) {
-    updateItems(items.filter((item) => item.id !== targetId))
+  async function removeItem(targetId) {
+    if (canUseRemote) {
+      try {
+        await studyAbroadApi.deleteMaterial(targetId, token)
+        setItems(items.filter((item) => item.id !== targetId))
+        setSyncNote('材料已从后端删除。')
+      } catch (error) {
+        setSyncNote(error.message || '删除失败，请稍后再试。')
+      }
+      return
+    }
+    updateLocalItems(items.filter((item) => item.id !== targetId))
   }
 
   return (
@@ -180,6 +244,7 @@ export default function SAMaterialsPage() {
                 <div className="progress-label">材料完成率 {stats.rate}%</div>
                 <div className="progress-bar alt"><span style={{ width: `${stats.rate}%` }} /></div>
               </div>
+              {syncNote ? <div className="notice-box"><p className="muted">{syncNote}</p></div> : null}
               <div className="filter-grid">
                 <label className="field">
                   <span>国家筛选</span>

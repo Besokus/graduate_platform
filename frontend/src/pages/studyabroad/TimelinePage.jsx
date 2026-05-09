@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Navbar from '../../components/Navbar.jsx'
 import Footer from '../../components/Footer.jsx'
+import { useAuth } from '../../context/AuthContext.jsx'
+import { studyAbroadApi } from '../../lib/api.js'
 import {
   getTimelineItems,
   saveTimelineItems,
@@ -28,8 +30,10 @@ function createId() {
 }
 
 export default function TimelinePage() {
+  const { token } = useAuth()
   const [items, setItems] = useState(() => getTimelineItems())
   const [phase, setPhase] = useState('全部阶段')
+  const [syncNote, setSyncNote] = useState('')
   const [form, setForm] = useState({
     title: '',
     country: '英国',
@@ -39,7 +43,33 @@ export default function TimelinePage() {
     note: '',
   })
 
-  function updateItems(nextItems) {
+  const canUseRemote = Boolean(token && token !== 'dev-token')
+
+  useEffect(() => {
+    if (!canUseRemote) return undefined
+    let active = true
+
+    async function loadRemoteTimeline() {
+      try {
+        const remoteItems = await studyAbroadApi.timeline(token)
+        if (active) {
+          setItems(remoteItems)
+          setSyncNote('当前使用后端数据库保存时间线。')
+        }
+      } catch {
+        if (active) {
+          setSyncNote('后端暂不可用，当前使用本地演示时间线。')
+        }
+      }
+    }
+
+    loadRemoteTimeline()
+    return () => {
+      active = false
+    }
+  }, [canUseRemote, token])
+
+  function updateLocalItems(nextItems) {
     setItems(nextItems)
     saveTimelineItems(nextItems)
   }
@@ -58,38 +88,73 @@ export default function TimelinePage() {
     return { done, doing, rate }
   }, [items])
 
-  function addItem(event) {
+  async function addItem(event) {
     event.preventDefault()
     const title = form.title.trim()
     if (!title) return
 
-    updateItems([
-      ...items,
-      {
-        id: createId(),
-        title,
-        country: form.country.trim() || '未填写',
-        school: form.school.trim() || '目标院校待定',
-        phase: form.phase,
-        dueDate: form.dueDate,
-        status: 'todo',
-        note: form.note.trim() || '暂无备注',
-      },
-    ])
+    const payload = {
+      title,
+      country: form.country.trim() || '未填写',
+      school: form.school.trim() || '目标院校待定',
+      phase: form.phase,
+      dueDate: form.dueDate,
+      status: 'todo',
+      note: form.note.trim() || '暂无备注',
+    }
+
+    if (canUseRemote) {
+      try {
+        const created = await studyAbroadApi.createTimeline(payload, token)
+        setItems([...items, created].sort((a, b) => a.dueDate.localeCompare(b.dueDate)))
+        setSyncNote('节点已保存到后端数据库。')
+      } catch (error) {
+        setSyncNote(error.message || '后端保存失败，请稍后再试。')
+        return
+      }
+    } else {
+      updateLocalItems([...items, { id: createId(), ...payload }])
+    }
     setForm({ ...form, title: '', school: '', note: '' })
   }
 
-  function cycleStatus(targetId) {
+  async function cycleStatus(targetId) {
     const order = ['todo', 'doing', 'done']
-    updateItems(items.map((item) => {
+    const targetItem = items.find((item) => item.id === targetId)
+    if (!targetItem) return
+    const nextIndex = (order.indexOf(targetItem.status) + 1) % order.length
+    const nextItem = { ...targetItem, status: order[nextIndex] }
+
+    if (canUseRemote) {
+      try {
+        const updated = await studyAbroadApi.updateTimeline(targetId, nextItem, token)
+        setItems(items.map((item) => (item.id === targetId ? updated : item)))
+        setSyncNote('节点状态已同步到后端。')
+      } catch (error) {
+        setSyncNote(error.message || '状态同步失败，请稍后再试。')
+      }
+      return
+    }
+
+    updateLocalItems(items.map((item) => {
       if (item.id !== targetId) return item
       const nextIndex = (order.indexOf(item.status) + 1) % order.length
       return { ...item, status: order[nextIndex] }
     }))
   }
 
-  function removeItem(targetId) {
-    updateItems(items.filter((item) => item.id !== targetId))
+  async function removeItem(targetId) {
+    if (canUseRemote) {
+      try {
+        await studyAbroadApi.deleteTimeline(targetId, token)
+        setItems(items.filter((item) => item.id !== targetId))
+        setSyncNote('节点已从后端删除。')
+      } catch (error) {
+        setSyncNote(error.message || '删除失败，请稍后再试。')
+      }
+      return
+    }
+    updateLocalItems(items.filter((item) => item.id !== targetId))
   }
 
   return (
@@ -189,8 +254,9 @@ export default function TimelinePage() {
               <div className="progress-block">
                 <div className="progress-label">完成率 {stats.rate}%</div>
                 <div className="progress-bar"><span style={{ width: `${stats.rate}%` }} /></div>
-                <div className="progress-note">点击节点状态按钮可在“待开始/进行中/已完成”之间切换。</div>
-              </div>
+              <div className="progress-note">点击节点状态按钮可在“待开始/进行中/已完成”之间切换。</div>
+            </div>
+              {syncNote ? <div className="notice-box"><p className="muted">{syncNote}</p></div> : null}
               <label className="field">
                 <span>阶段筛选</span>
                 <select value={phase} onChange={(event) => setPhase(event.target.value)}>
