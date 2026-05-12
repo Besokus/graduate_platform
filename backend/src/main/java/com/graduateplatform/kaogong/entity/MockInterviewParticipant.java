@@ -1,44 +1,40 @@
-package com.graduateplatform.community.entity;
+package com.graduateplatform.kaogong.entity;
+
 
 import com.graduateplatform.common.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDateTime;
 
 @Entity
-@Table(
-    name = "post_interactions",
-    uniqueConstraints = {
-        @UniqueConstraint(name = "uk_post_user_type", columnNames = {"post_id", "user_id", "type"})
-    }
-)
+@Table(name = "mock_interview_participants", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"room_id", "user_id"})
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PostInteraction {
+public class MockInterviewParticipant {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id", nullable = false)
-    private Post post;
+    @JoinColumn(name = "room_id", nullable = false)
+    private MockInterviewRoom room;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false, length = 20)
-    private String type; // LIKE / FAVORITE
+    private String roleInRoom;
 
     @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private LocalDateTime joinedAt;
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        joinedAt = LocalDateTime.now();
     }
 }
