@@ -1,0 +1,31 @@
+package com.graduateplatform.user.controller;
+
+
+import com.graduateplatform.common.entity.User;
+import com.graduateplatform.common.dto.ApiResponse;
+import com.graduateplatform.user.service.UserService;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @GetMapping("/me/profile")
+    public ApiResponse<?> profile(Authentication auth) {
+        Long userId = (Long) auth.getPrincipal();
+        return ApiResponse.ok(userService.getProfile(userId));
+    }
+
+    @GetMapping("/me/dashboard")
+    public ApiResponse<?> dashboard(Authentication auth) {
+        Long userId = (Long) auth.getPrincipal();
+        return ApiResponse.ok(userService.getDashboard(userId));
+    }
+}

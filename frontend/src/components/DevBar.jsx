@@ -8,7 +8,8 @@ const targets = [
 ]
 
 export default function DevBar() {
-  const { isAuthed, user, switchDevUser } = useAuth()
+  const { token, isAuthed, user, switchDevUser } = useAuth()
+  const isRealUser = Boolean(isAuthed && token && token !== 'dev-token')
 
   return (
     <div style={{
@@ -26,29 +27,29 @@ export default function DevBar() {
       padding: '8px 16px',
       fontSize: 13,
       flexWrap: 'wrap',
-    }}>
+      }}>
       <span style={{ opacity: 0.6 }}>DEV</span>
-      {targets.map((t) => (
-        <button
-          key={t.key}
-          type="button"
-          onClick={() => switchDevUser(t.key)}
-          style={{
-            border: 'none',
-            borderRadius: 999,
-            padding: '4px 12px',
-            cursor: 'pointer',
-            fontWeight: 600,
-            fontSize: 13,
-            fontFamily: 'inherit',
-            background: user?.target === t.key ? '#0f766e' : 'rgba(255,255,255,0.15)',
-            color: '#f0fdfa',
-          }}
-        >
-          {t.label}
-        </button>
-      ))}
-      {isAuthed && (
+      {!isRealUser && targets.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => switchDevUser(t.key)}
+            style={{
+              border: 'none',
+              borderRadius: 999,
+              padding: '4px 12px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: 13,
+              fontFamily: 'inherit',
+              background: user?.target === t.key ? '#0f766e' : 'rgba(255,255,255,0.15)',
+              color: '#f0fdfa',
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      {!isRealUser && isAuthed && (
         <button
           type="button"
           onClick={() => switchDevUser(null)}
@@ -68,7 +69,7 @@ export default function DevBar() {
         </button>
       )}
       <span style={{ opacity: 0.5, marginLeft: 8 }}>
-        {isAuthed ? `当前: ${user?.name} (${user?.target})` : '未登录（游客模式）'}
+        {isRealUser ? `真实账号: ${user?.name} (${user?.target})` : isAuthed ? `模拟用户: ${user?.name} (${user?.target})` : '未登录（游客模式）'}
       </span>
     </div>
   )

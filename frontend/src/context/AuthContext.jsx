@@ -20,6 +20,27 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let active = true
     async function init() {
+      if (token && token !== 'dev-token') {
+        try {
+          const me = await authApi.me(token)
+          localStorage.removeItem(DEV_USER_KEY)
+          if (active) {
+            setUser(me)
+          }
+        } catch {
+          localStorage.removeItem(TOKEN_KEY)
+          if (active) {
+            setToken('')
+            setUser(null)
+          }
+        } finally {
+          if (active) {
+            setLoading(false)
+          }
+        }
+        return
+      }
+
       // 开发模式：通过 localStorage 设置模拟用户，无需后端
       const devTarget = localStorage.getItem(DEV_USER_KEY)
       if (devTarget && devUsers[devTarget]) {
@@ -32,26 +53,7 @@ export function AuthProvider({ children }) {
         return
       }
 
-      if (!token) {
-        setLoading(false)
-        return
-      }
-      try {
-        const me = await authApi.me(token)
-        if (active) {
-          setUser(me)
-        }
-      } catch {
-        localStorage.removeItem(TOKEN_KEY)
-        if (active) {
-          setToken('')
-          setUser(null)
-        }
-      } finally {
-        if (active) {
-          setLoading(false)
-        }
-      }
+      setLoading(false)
     }
     init()
     return () => {
@@ -68,6 +70,7 @@ export function AuthProvider({ children }) {
     }
     const devUser = devUsers[target]
     if (devUser) {
+      localStorage.removeItem(TOKEN_KEY)
       localStorage.setItem(DEV_USER_KEY, target)
       setToken('dev-token')
       setUser(devUser)
@@ -76,6 +79,7 @@ export function AuthProvider({ children }) {
 
   async function login(payload) {
     const auth = await authApi.login(payload)
+    localStorage.removeItem(DEV_USER_KEY)
     localStorage.setItem(TOKEN_KEY, auth.token)
     setToken(auth.token)
     setUser(auth)
@@ -84,6 +88,7 @@ export function AuthProvider({ children }) {
 
   async function register(payload) {
     const auth = await authApi.register(payload)
+    localStorage.removeItem(DEV_USER_KEY)
     localStorage.setItem(TOKEN_KEY, auth.token)
     setToken(auth.token)
     setUser(auth)

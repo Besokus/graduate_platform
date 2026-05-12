@@ -10,6 +10,7 @@ import PracticeDetailPage from './pages/PracticeDetailPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
+import PostEditPage from './pages/PostEditPage.jsx'
 
 // 考研方向专属页面
 import KaoyanPage from './pages/kaoyan/KaoyanPage.jsx'
@@ -43,6 +44,8 @@ import ExperiencePage from './pages/studyabroad/ExperiencePage.jsx'
 import AdminPage from './pages/admin/AdminPage.jsx'
 import ReviewPage from './pages/admin/ReviewPage.jsx'
 import UserManagementPage from './pages/admin/UserManagementPage.jsx'
+import KaogongDataPage from './pages/admin/KaogongDataPage.jsx'
+import ReportPage from './pages/admin/ReportPage.jsx'
 
 export default function App() {
   return (
@@ -58,6 +61,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/profile" element={<ProfilePage />} />
+      <Route path="/profile/posts/:postId/edit" element={<PostEditPage />} />
 
       {/* 考研方向专属 */}
       <Route path="/kaoyan" element={<KaoyanPage />} />
@@ -91,6 +95,8 @@ export default function App() {
       <Route path="/admin" element={<AdminPage />} />
       <Route path="/admin/review" element={<ReviewPage />} />
       <Route path="/admin/users" element={<UserManagementPage />} />
+      <Route path="/admin/kaogong-data" element={<KaogongDataPage />} />
+      <Route path="/admin/reports" element={<ReportPage />} />
     </Routes>
     </>
   )

@@ -52,6 +52,8 @@ export default function AdminPage() {
               <div className="card-title">快捷操作</div>
               <Link className="btn primary" to="/admin/review">内容审核</Link>
               <Link className="btn outline" to="/admin/users">用户管理</Link>
+              <Link className="btn outline" to="/admin/reports">举报处理</Link>
+              <Link className="btn outline" to="/admin/kaogong-data">考公数据维护</Link>
             </div>
           </div>
         </section>
@@ -76,6 +78,22 @@ export default function AdminPage() {
               </div>
               <p className="muted">查看用户列表，按目标方向和状态筛选。支持禁言/封禁/解锁操作。</p>
               <Link className="btn primary small" to="/admin/users">管理用户</Link>
+            </div>
+            <div className="track-card">
+              <div className="track-head">
+                <h3>举报处理</h3>
+                <span className="tag subtle">UC-27</span>
+              </div>
+              <p className="muted">处理用户举报，支持举报成立后下架帖子或驳回举报。</p>
+              <Link className="btn primary small" to="/admin/reports">处理举报</Link>
+            </div>
+            <div className="track-card">
+              <div className="track-head">
+                <h3>考公数据维护</h3>
+                <span className="tag subtle">UC-32</span>
+              </div>
+              <p className="muted">维护岗位、进面分数线和考试节点，支持筛选、后端分页与新增数据。</p>
+              <Link className="btn primary small" to="/admin/kaogong-data">维护考公数据</Link>
             </div>
             <div className="track-card">
               <div className="track-head">
