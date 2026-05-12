@@ -12,7 +12,7 @@ export default function AdminPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    adminApi.dashboard(token).then(setStats).catch(e => setError(e.message))
+    adminApi.dashboard(token).then(setStats).catch((e) => setError(e.message))
   }, [token])
 
   if (!isAuthed || user?.role !== 'admin') {
@@ -27,7 +27,7 @@ export default function AdminPage() {
           <div className="section-head">
             <p className="eyebrow">管理后台</p>
             <h2>管理员控制台</h2>
-            <p className="muted">内容审核、用户管理、基础数据维护入口。</p>
+            <p className="muted">内容审核、用户管理、举报处理和考公基础数据维护入口。</p>
             {error && <div className="error-text">{error}</div>}
           </div>
 
@@ -44,6 +44,12 @@ export default function AdminPage() {
                     {stats?.pendingPosts ?? '-'}
                   </div>
                   <div className="mini-label">待审核帖子</div>
+                </div>
+                <div className="mini-card">
+                  <div className="mini-value" style={{ color: stats?.pendingReports > 0 ? '#b91c1c' : undefined }}>
+                    {stats?.pendingReports ?? '-'}
+                  </div>
+                  <div className="mini-label">待处理举报</div>
                 </div>
               </div>
             </div>
@@ -68,7 +74,7 @@ export default function AdminPage() {
                 <h3>内容审核</h3>
                 <span className="tag subtle">UC-26</span>
               </div>
-              <p className="muted">审核待处理帖子：通过/驳回/下架。支持按状态筛选，操作留痕。</p>
+              <p className="muted">审核待处理帖子：通过、驳回或下架，支持按状态筛选和操作留痕。</p>
               <Link className="btn primary small" to="/admin/review">进入审核</Link>
             </div>
             <div className="track-card">
@@ -76,15 +82,15 @@ export default function AdminPage() {
                 <h3>用户管理</h3>
                 <span className="tag subtle">UC-25</span>
               </div>
-              <p className="muted">查看用户列表，按目标方向和状态筛选。支持禁言/封禁/解锁操作。</p>
+              <p className="muted">查看用户列表，按目标方向和状态筛选，支持禁言、封禁和解锁。</p>
               <Link className="btn primary small" to="/admin/users">管理用户</Link>
             </div>
             <div className="track-card">
               <div className="track-head">
                 <h3>举报处理</h3>
-                <span className="tag subtle">UC-27</span>
+                <span className="tag subtle">UC-30</span>
               </div>
-              <p className="muted">处理用户举报，支持举报成立后下架帖子或驳回举报。</p>
+              <p className="muted">查看举报列表，支持举报成立后下架帖子或驳回举报。</p>
               <Link className="btn primary small" to="/admin/reports">处理举报</Link>
             </div>
             <div className="track-card">
@@ -100,8 +106,8 @@ export default function AdminPage() {
                 <h3>题库管理</h3>
                 <span className="tag subtle">UC-28</span>
               </div>
-              <p className="muted">新增/修改/删除题库与试题，预留批量导入接口。</p>
-              <button className="btn outline small" disabled>开发中</button>
+              <p className="muted">新增、修改、删除题库与试题，预留批量导入接口。</p>
+              <button className="btn outline small" type="button" disabled>开发中</button>
             </div>
           </div>
         </section>

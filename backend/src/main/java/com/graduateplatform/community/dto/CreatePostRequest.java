@@ -2,24 +2,17 @@ package com.graduateplatform.community.dto;
 
 import jakarta.validation.constraints.*;
 import lombok.Data;
+import org.springframework.web.multipart.MultipartFile;
 
 @Data
 public class CreatePostRequest {
-    @NotBlank
-    @Size(min = 6, max = 60)
+    @Size(max = 60)
     private String title;
-
-    @NotBlank
-    @Size(min = 20, max = 2000)
-    private String content;
 
     @NotBlank
     private String categoryCode;
 
     private java.util.List<String> tags;
-
-    @NotNull
-    private Long authorId;
 
     private String visibility = "public"; // public / members
 
@@ -30,4 +23,6 @@ public class CreatePostRequest {
     private String attachmentNote;
 
     private String status = "PENDING"; // DRAFT / PENDING
+
+    private MultipartFile markdownFile;
 }

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import Navbar from '../../components/Navbar.jsx'
 import Footer from '../../components/Footer.jsx'
+import MarkdownContent from '../../components/MarkdownContent.jsx'
 import { adminApi } from '../../lib/api.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import '../../App.css'
@@ -21,7 +22,7 @@ export default function ReviewPage() {
   const [error, setError] = useState('')
   const [acting, setActing] = useState(null)
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
@@ -34,14 +35,23 @@ export default function ReviewPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filterStatus, token])
 
-  useEffect(() => { load() }, [filterStatus, token])
+  useEffect(() => { load() }, [load])
 
   async function handleAction(postId, action) {
+    let reason = ''
+    if (action === 'REJECT' || action === 'OFFLINE') {
+      reason = window.prompt('请输入处理原因') || ''
+      if (!reason.trim()) {
+        setError('该操作必须填写原因')
+        return
+      }
+    }
+
     setActing(postId)
     try {
-      await adminApi.reviewPost(postId, action, '', token)
+      await adminApi.reviewPost(postId, action, reason.trim(), token)
       setPosts(prev => prev.filter(p => p.id !== postId))
     } catch (e) {
       setError(e.message)
@@ -97,7 +107,9 @@ export default function ReviewPage() {
                       {statusLabelMap[post.status]}
                     </span>
                   </div>
-                  <p className="muted">{post.content?.slice(0, 120)}...</p>
+                  <div className="notice-box review-markdown-preview">
+                    <MarkdownContent content={post.content || ''} />
+                  </div>
                   <div className="tag-row">
                     <span className="tag subtle">{post.category?.name}</span>
                     <span className="tag subtle">作者: {post.authorName || post.authorId}</span>
@@ -110,6 +122,7 @@ export default function ReviewPage() {
                     <span>评论{post.commentCount}</span>
                     <span>举报{post.reportCount}</span>
                   </div>
+                  {post.reviewReason ? <div className="muted">处理原因：{post.reviewReason}</div> : null}
                   <div className="muted" style={{ fontSize: 12 }}>
                     {post.createdAt?.replace('T', ' ').slice(0, 16)}
                   </div>

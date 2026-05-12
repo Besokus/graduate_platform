@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import MarkdownContent from './MarkdownContent.jsx'
 
-function PostComposerModal({ open, onClose, categories, onSubmit, submitting, error }) {
-  const TITLE_MAX = 60
-  const CONTENT_MAX = 2000
+const TITLE_MAX = 60
+const CONTENT_MAX = 50000
 
-  const [form, setForm] = useState({
+function buildInitialForm(categories) {
+  return {
     title: '',
-    content: '',
+    markdownFile: null,
+    markdownFileName: '',
+    markdownContent: '',
     categoryCode: categories[0]?.code || 'kaoyan',
     tags: '',
     visibility: 'public',
@@ -14,11 +17,35 @@ function PostComposerModal({ open, onClose, categories, onSubmit, submitting, er
     hasAttachment: false,
     attachmentNote: '',
     submitAction: 'publish',
-  })
+  }
+}
+
+function extractMarkdownTitle(content, fileName) {
+  const lines = content.split('\n')
+  for (const line of lines) {
+    const trimmedLine = line.trim()
+    if (!trimmedLine.startsWith('#')) continue
+    const title = trimmedLine.replace(/^#{1,6}\s*/, '').trim()
+    if (title) return title
+  }
+  return fileName.replace(/\.[^.]+$/, '')
+}
+
+async function readMarkdownFile(file) {
+  const fileName = file?.name || ''
+  const lowerName = fileName.toLowerCase()
+  if (!lowerName.endsWith('.md') && !lowerName.endsWith('.markdown')) {
+    throw new Error('请上传 .md 或 .markdown 文件')
+  }
+
+  const rawContent = await file.text()
+  return rawContent.replace(/\r\n/g, '\n').trim()
+}
+
+function PostComposerModal({ open, onClose, categories, onSubmit, submitting, error }) {
+  const [form, setForm] = useState(() => buildInitialForm(categories))
   const [localError, setLocalError] = useState('')
-  const categoryCode = categories.find((item) => item.code === form.categoryCode)
-    ? form.categoryCode
-    : (categories[0]?.code || 'kaoyan')
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     if (!open) return
@@ -33,22 +60,69 @@ function PostComposerModal({ open, onClose, categories, onSubmit, submitting, er
   }, [open, onClose])
 
   const titleLength = form.title.trim().length
-  const contentLength = form.content.trim().length
+  const contentLength = form.markdownContent.length
+  const categoryCode = categories.find((item) => item.code === form.categoryCode)
+    ? form.categoryCode
+    : (categories[0]?.code || 'kaoyan')
 
   function closeModal() {
     setLocalError('')
     onClose()
   }
 
+  function clearNativeFileInput() {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  async function handleFileChange(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setLocalError('')
+    try {
+      const markdownContent = await readMarkdownFile(file)
+      const nextTitle = form.title.trim() || extractMarkdownTitle(markdownContent, file.name)
+      setForm((current) => ({
+        ...current,
+        title: nextTitle.slice(0, TITLE_MAX),
+        markdownFile: file,
+        markdownFileName: file.name,
+        markdownContent,
+      }))
+    } catch (fileError) {
+      setForm((current) => ({
+        ...current,
+        markdownFile: null,
+        markdownFileName: '',
+        markdownContent: '',
+      }))
+      clearNativeFileInput()
+      setLocalError(fileError.message || 'Markdown 文件读取失败')
+    }
+  }
+
+  function clearFile() {
+    setLocalError('')
+    setForm((current) => ({
+      ...current,
+      markdownFile: null,
+      markdownFileName: '',
+      markdownContent: '',
+    }))
+    clearNativeFileInput()
+  }
+
   if (!open) return null
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal-card">
+      <div className="modal-card composer-modal">
         <div className="modal-head">
           <div>
             <div className="modal-title">发布帖子</div>
-            <div className="muted">选择赛道并填写内容，发布你的经验贴。</div>
+            <div className="muted">上传 Markdown 文档作为正文内容，系统会读取文件并创建社区帖子。</div>
           </div>
           <button className="icon-btn" type="button" onClick={closeModal}>x</button>
         </div>
@@ -57,22 +131,49 @@ function PostComposerModal({ open, onClose, categories, onSubmit, submitting, er
           onSubmit={(event) => {
             event.preventDefault()
             setLocalError('')
+            if (!form.markdownFile) {
+              setLocalError('请先选择 Markdown 文件')
+              return
+            }
             if (titleLength < 6 || titleLength > TITLE_MAX) {
               setLocalError(`标题需在 6-${TITLE_MAX} 个字符之间`)
               return
             }
             if (contentLength < 20 || contentLength > CONTENT_MAX) {
-              setLocalError(`正文需在 20-${CONTENT_MAX} 个字符之间`)
+              setLocalError(`Markdown 正文需在 20-${CONTENT_MAX} 个字符之间`)
               return
             }
             onSubmit({ ...form, categoryCode })
           }}
         >
           <label className="field">
+            <span>Markdown 文件</span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".md,.markdown,text/markdown,text/plain"
+              onChange={handleFileChange}
+              required
+            />
+            <span className="field-tip">仅支持 `.md` / `.markdown`，正文长度 20-50000 字符</span>
+          </label>
+
+          {form.markdownFileName ? (
+            <div className="notice-box">
+              <strong>已选择文件</strong>
+              <p className="muted">{form.markdownFileName}</p>
+              <p className="muted">正文长度：{contentLength}/{CONTENT_MAX}</p>
+              <button className="btn ghost small" type="button" onClick={clearFile}>
+                重新选择
+              </button>
+            </div>
+          ) : null}
+
+          <label className="field">
             <span>标题</span>
             <input
               type="text"
-              placeholder="例如：408 三轮复习节奏"
+              placeholder="可手动填写；留空时会优先取 Markdown 一级标题"
               value={form.title}
               onChange={(event) => {
                 setLocalError('')
@@ -82,6 +183,7 @@ function PostComposerModal({ open, onClose, categories, onSubmit, submitting, er
             />
             <span className="field-tip">{titleLength}/{TITLE_MAX}</span>
           </label>
+
           <label className="field">
             <span>赛道</span>
             <select
@@ -96,6 +198,7 @@ function PostComposerModal({ open, onClose, categories, onSubmit, submitting, er
               ))}
             </select>
           </label>
+
           <label className="field">
             <span>标签</span>
             <input
@@ -108,6 +211,7 @@ function PostComposerModal({ open, onClose, categories, onSubmit, submitting, er
               }}
             />
           </label>
+
           <div className="grid-two compact">
             <label className="field">
               <span>可见范围</span>
@@ -136,6 +240,7 @@ function PostComposerModal({ open, onClose, categories, onSubmit, submitting, er
               </select>
             </label>
           </div>
+
           <div className="switch-row">
             <label className="switch-item">
               <input
@@ -157,15 +262,16 @@ function PostComposerModal({ open, onClose, categories, onSubmit, submitting, er
                   setForm({ ...form, hasAttachment: event.target.checked })
                 }}
               />
-              <span>含附件资料</span>
+              <span>另含附加资料</span>
             </label>
           </div>
+
           {form.hasAttachment ? (
             <label className="field">
-              <span>附件说明</span>
+              <span>附加资料说明</span>
               <input
                 type="text"
-                placeholder="例如：复习计划表（PDF，2MB）"
+                placeholder="例如：附 PDF、真题汇总、外链资料等"
                 value={form.attachmentNote}
                 onChange={(event) => {
                   setLocalError('')
@@ -174,20 +280,16 @@ function PostComposerModal({ open, onClose, categories, onSubmit, submitting, er
               />
             </label>
           ) : null}
-          <label className="field">
-            <span>内容</span>
-            <textarea
-              rows="5"
-              placeholder="分享你的经验、方法和参考资料。"
-              value={form.content}
-              onChange={(event) => {
-                setLocalError('')
-                setForm({ ...form, content: event.target.value.slice(0, CONTENT_MAX) })
-              }}
-              required
-            ></textarea>
-            <span className="field-tip">{contentLength}/{CONTENT_MAX}</span>
-          </label>
+
+          {form.markdownContent ? (
+            <div className="field">
+              <span>正文预览（原始 Markdown）</span>
+              <div className="notice-box composer-preview">
+                <MarkdownContent content={form.markdownContent} />
+              </div>
+            </div>
+          ) : null}
+
           {localError ? <div className="error-text">{localError}</div> : null}
           {error ? <div className="error-text">{error}</div> : null}
           <div className="modal-actions">
