@@ -228,6 +228,33 @@ export const userApi = {
   },
 }
 
+export const studyAbroadApi = {
+  timeline(token) {
+    return request('/api/studyabroad/timeline', { token })
+  },
+  createTimeline(payload, token) {
+    return request('/api/studyabroad/timeline', { method: 'POST', body: payload, token })
+  },
+  updateTimeline(id, payload, token) {
+    return request(`/api/studyabroad/timeline/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteTimeline(id, token) {
+    return request(`/api/studyabroad/timeline/${id}`, { method: 'DELETE', token })
+  },
+  materials(token) {
+    return request('/api/studyabroad/materials', { token })
+  },
+  createMaterial(payload, token) {
+    return request('/api/studyabroad/materials', { method: 'POST', body: payload, token })
+  },
+  updateMaterial(id, payload, token) {
+    return request(`/api/studyabroad/materials/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteMaterial(id, token) {
+    return request(`/api/studyabroad/materials/${id}`, { method: 'DELETE', token })
+  },
+}
+
 export const kaogongApi = {
   matchJobs(payload, token) {
     return request('/api/kaogong/jobs/match', { method: 'POST', body: payload, token })
@@ -396,8 +423,8 @@ export const kaogongApi = {
         }
         resolve(data.data)
       }
-      xhr.onerror = () => reject(new Error('上传失败，请检查网络后重试'))
-      xhr.onabort = () => reject(new Error('上传已取消'))
+      xhr.onerror = () => reject(new Error('Upload failed. Please check the network and try again.'))
+      xhr.onabort = () => reject(new Error('Upload canceled.'))
       xhr.send(formData)
     })
   },

@@ -30,6 +30,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Public authentication POST endpoints
                 .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login", "/api/auth/send-code").permitAll()
+                // Study abroad management APIs require authenticated users
+                .requestMatchers("/api/studyabroad/**").authenticated()
                 // Admin APIs must be declared before generic /api/** GET allow rules
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 // Kaogong endpoints that require authenticated users

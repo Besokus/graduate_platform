@@ -35,5 +35,6 @@ public class Question {
     @JoinColumn(name = "bank_id", nullable = false)
     private QuestionBank bank;
 
+    @Builder.Default
     private Boolean active = true;
 }
