@@ -85,14 +85,53 @@ export const communityApi = {
 }
 
 export const practiceApi = {
-  banks(target) {
+  banks(filters = {}) {
     const search = new URLSearchParams()
-    if (target) search.set('target', target)
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value && value !== 'all') search.set(key, value)
+    })
     const query = search.toString()
     return request(`/api/question-banks${query ? `?${query}` : ''}`)
   },
+  options() {
+    return request('/api/question-banks/options')
+  },
   questions(bankId) {
     return request(`/api/question-banks/${bankId}/questions`)
+  },
+  createSession(payload, token) {
+    return request('/api/practice/sessions', {
+      method: 'POST',
+      body: payload,
+      token,
+    })
+  },
+  session(sessionId, token) {
+    return request(`/api/practice/sessions/${sessionId}`, { token })
+  },
+  saveAnswer(sessionId, questionId, answer, token) {
+    return request(`/api/practice/sessions/${sessionId}/answers/${questionId}`, {
+      method: 'PUT',
+      body: { answer },
+      token,
+    })
+  },
+  submitSession(sessionId, token) {
+    return request(`/api/practice/sessions/${sessionId}/submit`, {
+      method: 'POST',
+      token,
+    })
+  },
+  wrongQuestions(filters = {}, token) {
+    const search = new URLSearchParams()
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value && value !== 'all') search.set(key, value)
+    })
+    const query = search.toString()
+    return request(`/api/practice/wrong-questions${query ? `?${query}` : ''}`, { token })
+  },
+  statistics(granularity = 'day', token) {
+    return request(`/api/practice/statistics?granularity=${granularity}`, { token })
   },
   submitAttempt(questionId, payload, token) {
     return request(`/api/questions/${questionId}/attempt`, {

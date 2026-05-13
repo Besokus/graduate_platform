@@ -29,7 +29,15 @@ public class Question {
 
     private String chapter;
 
+    private String questionType; // single / multiple / judge / subjective
+
+    private String knowledgePoint;
+
     private String difficulty; // easy / middle / hard
+
+    private Integer year;
+
+    private String status; // draft / published / disabled
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "bank_id", nullable = false)

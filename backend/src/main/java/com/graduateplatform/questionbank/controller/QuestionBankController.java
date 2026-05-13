@@ -15,7 +15,17 @@ public class QuestionBankController {
     }
 
     @GetMapping
-    public ApiResponse<?> list(@RequestParam(required = false) String target) {
-        return ApiResponse.ok(bankService.getBanks(target));
+    public ApiResponse<?> list(@RequestParam(required = false) String target,
+                               @RequestParam(required = false) String subject,
+                               @RequestParam(required = false) String chapter,
+                               @RequestParam(required = false) String questionType,
+                               @RequestParam(required = false) String difficulty,
+                               @RequestParam(required = false) Integer year) {
+        return ApiResponse.ok(bankService.getBanks(target, subject, chapter, questionType, difficulty, year));
+    }
+
+    @GetMapping("/options")
+    public ApiResponse<?> options() {
+        return ApiResponse.ok(bankService.getOptions());
     }
 }
