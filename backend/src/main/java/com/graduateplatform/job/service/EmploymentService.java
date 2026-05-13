@@ -64,7 +64,7 @@ public class EmploymentService {
     @Transactional(readOnly = true)
     public Map<String, Object> postingDetail(Long id) {
         JobPosting job = jobRepository.findById(id).filter(JobPosting::getActive)
-            .orElseThrow(() -> new BusinessException("login required"));
+            .orElseThrow(() -> new BusinessException("Job posting not found"));
         return toJobMap(job);
     }
 
