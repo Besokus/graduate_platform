@@ -99,7 +99,12 @@ public class EmploymentService {
         User user = ensureUser(userId);
         ResumeProfile resume = resumeRepository.findByUserId(userId)
             .orElseGet(() -> ResumeProfile.builder().user(user).build());
-        resume.setTemplateType(defaultString(req.getTemplateType(), "record not found"));
+        String templateType = trim(req.getTemplateType());
+        if (templateType != null) {
+            resume.setTemplateType(templateType);
+        } else if (trim(resume.getTemplateType()) == null) {
+            resume.setTemplateType("default");
+        }
         resume.setBaseInfo(trim(req.getBaseInfo()));
         resume.setEducation(trim(req.getEducation()));
         resume.setProjects(trim(req.getProjects()));
