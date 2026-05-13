@@ -61,6 +61,7 @@ export default function AdminPage() {
               <Link className="btn outline" to="/admin/reports">举报处理</Link>
               <Link className="btn outline" to="/admin/employment">Employment management</Link>
               <Link className="btn outline" to="/admin/kaogong-data">考公数据维护</Link>
+              <Link className="btn outline" to="/admin/kaoyan-data">考研数据维护</Link>
             </div>
           </div>
         </section>
