@@ -51,7 +51,7 @@ public class EmploymentService {
     @Transactional(readOnly = true)
     public Map<String, Object> fairDetail(Long id) {
         CareerFair fair = fairRepository.findById(id).filter(CareerFair::getActive)
-            .orElseThrow(() -> new BusinessException("Notification not found or not owned by current user"));
+            .orElseThrow(() -> new BusinessException("Career fair not found or inactive"));
         return toFairMap(fair);
     }
 
