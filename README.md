@@ -179,8 +179,30 @@ npm run dev
 | PUT | `/api/admin/posts/{id}/review` | 审核帖子 | 管理员 |
 | GET/PUT | `/api/admin/users/**` | 用户管理 | 管理员 |
 
+| GET | `/api/job/fairs/**` | Employment career fair browse/detail | Public |
+| GET | `/api/job/postings/**` | Employment job posting browse/detail | Public |
+| GET/PUT | `/api/job/preferences` | Current user's job subscription preferences | Authenticated |
+| GET/PUT | `/api/job/resume` | Current user's persisted online resume | Authenticated |
+| GET | `/api/job/recommendations` | Deterministic rule-based job recommendations | Authenticated |
+| GET/POST/PUT/DELETE | `/api/job/applications/**` | Current user's application tracking records | Authenticated |
+| GET/PUT | `/api/job/notifications/**` | Current user's in-app employment notifications | Authenticated |
+| GET/POST/PUT/DELETE | `/api/admin/employment/fairs/**` | Admin career fair source-data management | Admin |
+| GET/POST/PUT/DELETE | `/api/admin/employment/jobs/**` | Admin job posting source-data management | Admin |
+| POST | `/api/admin/employment/notifications/trigger` | Admin manual matched station-notification trigger for fairs/jobs | Admin |
+
 ## 开发说明
 
 - **JPA `ddl-auto: update`** — 实体变更后自动同步表结构，生产环境建议改为 `validate` 并配合 Flyway/Liquibase 迁移
 - **开发模式** — 前端无需后端即可通过 `DevBar` 工具栏切换模拟用户身份，通过 `localStorage` 注入测试 token
 - **验证码** — 当前验证码仅输出到后端日志（见 `VerificationCodeService`），实际对接邮箱时需修改逻辑
+
+
+### Employment module additions
+
+- Backend: `backend/src/main/java/com/graduateplatform/job/**` contains the employment domain: career fairs, job postings, online resume profiles, application records, subscription preferences, and station notifications.
+- Frontend: `frontend/src/pages/job/**` implements the user employment pages; `frontend/src/pages/admin/EmploymentManagementPage.jsx` implements fair/job source-data management.
+- API client: `frontend/src/lib/api.js` exposes `employmentApi` and `adminEmploymentApi`.
+
+### Employment v1 non-goals
+
+Employment v1 intentionally does not include Word/PDF resume export, external recruitment-platform API sync, email/SMS/WeChat push, or AI/model-based recommendations. Notifications are station-internal records matched by saved preferences.

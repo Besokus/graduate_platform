@@ -1,5 +1,4 @@
 package com.graduateplatform.community.entity;
-
 import com.graduateplatform.common.entity.User;
 import jakarta.persistence.*;
 import lombok.*;

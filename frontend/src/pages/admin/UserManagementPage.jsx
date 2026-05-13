@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import Navbar from '../../components/Navbar.jsx'
 import Footer from '../../components/Footer.jsx'
@@ -38,7 +38,7 @@ export default function UserManagementPage() {
   const [error, setError] = useState('')
   const [acting, setActing] = useState(null)
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
@@ -49,9 +49,9 @@ export default function UserManagementPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filterTarget, filterStatus, token])
 
-  useEffect(() => { load() }, [filterTarget, filterStatus, token])
+  useEffect(() => { load() }, [load])
 
   async function handleStatusChange(userId, newStatus) {
     setActing(userId)
@@ -91,6 +91,18 @@ export default function UserManagementPage() {
                     onClick={() => setFilterTarget(t.value)}
                   >
                     {t.label}
+                  </button>
+                ))}
+              </div>
+              <div className="tag-row" style={{ marginTop: 12 }}>
+                {['', 'normal', 'muted', 'upload_limited', 'temporary_locked', 'banned'].map(status => (
+                  <button
+                    key={status || 'all'}
+                    type="button"
+                    className={`tag tag-btn ${filterStatus === status ? 'selected' : ''}`}
+                    onClick={() => setFilterStatus(status)}
+                  >
+                    {status ? (statusLabelMap[status] || status) : 'All status'}
                   </button>
                 ))}
               </div>
