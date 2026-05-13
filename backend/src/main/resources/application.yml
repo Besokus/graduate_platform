@@ -24,6 +24,10 @@ spring:
           auth: true
           starttls:
             enable: true
+  servlet:
+    multipart:
+      max-file-size: 30MB
+      max-request-size: 35MB
 
 server:
   port: 8080
@@ -32,6 +36,10 @@ app:
   jwt:
     secret: graduate-platform-jwt-secret-key-must-be-at-least-256-bits-long-for-hs256
     expiration-ms: 86400000
+  upload:
+    mock-interview-dir: uploads/mock-interviews
+    mock-interview-max-bytes: 31457280
+    mock-interview-allowed-extensions: .pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.png,.jpg,.jpeg,.gif,.mp3,.wav,.m4a,.mp4,.zip,.rar
 
 logging:
   level:

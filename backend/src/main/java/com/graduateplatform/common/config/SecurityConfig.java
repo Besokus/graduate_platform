@@ -28,18 +28,47 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // 公开的 POST 请求
+                // Public authentication POST endpoints
                 .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login", "/api/auth/send-code").permitAll()
-                // 需要认证的写操作
+                // Study abroad management APIs require authenticated users
+                .requestMatchers("/api/studyabroad/**").authenticated()
+                // Admin APIs must be declared before generic /api/** GET allow rules
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                // Kaogong endpoints that require authenticated users
+                .requestMatchers(HttpMethod.GET, "/api/kaogong/jobs/favorites").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/kaogong/jobs/match-history").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/kaogong/score-lines/favorites").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/kaogong/calendar/subscriptions/me").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/kaogong/notifications/me").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/kaogong/interviews/me").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/kaogong/interviews/me/page").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/kaogong/interviews/feedback/me").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/kaogong/interviews/feedback/me/page").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/kaogong/interviews/attachments/*/download").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/kaogong/jobs/*/favorite").authenticated()
+                .requestMatchers(HttpMethod.DELETE, "/api/kaogong/jobs/*/favorite").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/kaogong/score-lines/*/favorite").authenticated()
+                .requestMatchers(HttpMethod.DELETE, "/api/kaogong/score-lines/*/favorite").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/kaogong/calendar/subscriptions").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/kaogong/calendar/subscriptions/*/cancel").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/kaogong/interviews").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/kaogong/interviews/*/join").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/kaogong/interviews/*/status").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/kaogong/interviews/*/messages").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/kaogong/interviews/*/attachments").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/kaogong/interviews/*/feedback").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/kaogong/jobs/match").permitAll()
+                // Employment public browse endpoints are open, personal data endpoints require auth
+                .requestMatchers(HttpMethod.GET, "/api/job/fairs/**", "/api/job/postings/**").permitAll()
+                .requestMatchers("/api/job/resume/**", "/api/job/applications/**", "/api/job/notifications/**",
+                    "/api/job/preferences/**", "/api/job/recommendations/**").authenticated()
+                // Generic GET APIs are public for read-only browsing
+                .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
+                // Write operations, question attempts, and user profile APIs require auth
                 .requestMatchers(HttpMethod.POST, "/api/posts/**").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/questions/*/attempt").authenticated()
-                .requestMatchers("/api/practice/**").authenticated()
                 .requestMatchers("/api/auth/me", "/api/auth/logout", "/api/users/**").authenticated()
-                // 管理员接口
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                // 公开的 GET 请求
-                .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
-                // H2 控制台
+                // H2 console
                 .requestMatchers("/h2-console/**").permitAll()
                 .anyRequest().authenticated()
             )

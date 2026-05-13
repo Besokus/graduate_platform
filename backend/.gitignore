@@ -4,5 +4,6 @@ target/
 *.war
 *.log
 data/
+uploads/
 .idea/
 *.iml

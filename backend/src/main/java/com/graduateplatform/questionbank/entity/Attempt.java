@@ -1,5 +1,4 @@
 package com.graduateplatform.questionbank.entity;
-
 import com.graduateplatform.common.entity.User;
 import jakarta.persistence.*;
 import lombok.*;

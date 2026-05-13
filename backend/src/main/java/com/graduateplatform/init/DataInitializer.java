@@ -1,9 +1,20 @@
 package com.graduateplatform.init;
 
+
 import com.graduateplatform.common.entity.User;
 import com.graduateplatform.common.repository.UserRepository;
 import com.graduateplatform.community.entity.PostCategory;
 import com.graduateplatform.community.repository.PostCategoryRepository;
+import com.graduateplatform.job.entity.CareerFair;
+import com.graduateplatform.job.entity.JobPosting;
+import com.graduateplatform.job.repository.CareerFairRepository;
+import com.graduateplatform.job.repository.JobPostingRepository;
+import com.graduateplatform.kaogong.entity.CivilServicePost;
+import com.graduateplatform.kaogong.entity.ExamCalendarEvent;
+import com.graduateplatform.kaogong.entity.InterviewScoreLine;
+import com.graduateplatform.kaogong.repository.CivilServicePostRepository;
+import com.graduateplatform.kaogong.repository.ExamCalendarEventRepository;
+import com.graduateplatform.kaogong.repository.InterviewScoreLineRepository;
 import com.graduateplatform.questionbank.entity.Question;
 import com.graduateplatform.questionbank.entity.QuestionBank;
 import com.graduateplatform.questionbank.repository.QuestionBankRepository;
@@ -17,13 +28,29 @@ public class DataInitializer implements CommandLineRunner {
     private final PostCategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final QuestionBankRepository bankRepository;
+    private final CareerFairRepository careerFairRepository;
+    private final JobPostingRepository jobPostingRepository;
+    private final CivilServicePostRepository civilServicePostRepository;
+    private final InterviewScoreLineRepository scoreLineRepository;
+    private final ExamCalendarEventRepository calendarEventRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataInitializer(PostCategoryRepository categoryRepository, UserRepository userRepository,
-                           QuestionBankRepository bankRepository, PasswordEncoder passwordEncoder) {
+                           QuestionBankRepository bankRepository,
+                           CareerFairRepository careerFairRepository,
+                           JobPostingRepository jobPostingRepository,
+                           CivilServicePostRepository civilServicePostRepository,
+                           InterviewScoreLineRepository scoreLineRepository,
+                           ExamCalendarEventRepository calendarEventRepository,
+                           PasswordEncoder passwordEncoder) {
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
         this.bankRepository = bankRepository;
+        this.civilServicePostRepository = civilServicePostRepository;
+        this.scoreLineRepository = scoreLineRepository;
+        this.calendarEventRepository = calendarEventRepository;
+        this.careerFairRepository = careerFairRepository;
+        this.jobPostingRepository = jobPostingRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -32,6 +59,8 @@ public class DataInitializer implements CommandLineRunner {
         initCategories();
         initUsers();
         initQuestionBanks();
+        initEmploymentData();
+        initKaoGongData();
     }
 
     private void initCategories() {
@@ -54,24 +83,36 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void initUsers() {
-        if (userRepository.count() > 0) return;
-
         java.time.LocalDateTime thirtyDaysAgo = java.time.LocalDateTime.now().minusDays(30);
 
-        User admin = userRepository.save(User.builder()
-            .name("管理员").email("admin@graduate.local")
-            .password(passwordEncoder.encode("admin123"))
-            .target("kaoyan").role("admin").status("normal").build());
-        admin.setCreatedAt(thirtyDaysAgo);
-        userRepository.save(admin);
+        if (!userRepository.existsByEmail("admin@graduate.local")) {
+            User admin = userRepository.save(User.builder()
+                .name("Admin").email("admin@graduate.local")
+                .password(passwordEncoder.encode("admin123"))
+                .target("kaoyan").role("admin").status("normal").build());
+            admin.setCreatedAt(thirtyDaysAgo);
+            userRepository.save(admin);
+        }
 
-        User testUser = userRepository.save(User.builder()
-            .name("测试用户").email("test@graduate.local").phone("13800138000")
-            .password(passwordEncoder.encode("test1234"))
-            .school("上海理工大学").major("计算机科学").grade("2023级")
-            .target("kaoyan").role("user").status("normal").build());
-        testUser.setCreatedAt(thirtyDaysAgo);
-        userRepository.save(testUser);
+        if (!userRepository.existsByEmail("test@graduate.local")) {
+            User testUser = userRepository.save(User.builder()
+                .name("Test User").email("test@graduate.local").phone("13800138000")
+                .password(passwordEncoder.encode("test1234"))
+                .school("Graduate University").major("Computer Science").grade("2023")
+                .target("kaoyan").role("user").status("normal").build());
+            testUser.setCreatedAt(thirtyDaysAgo);
+            userRepository.save(testUser);
+        }
+
+        if (!userRepository.existsByEmail("job@graduate.local")) {
+            User jobUser = userRepository.save(User.builder()
+                .name("Employment Test User").email("job@graduate.local").phone("13800138001")
+                .password(passwordEncoder.encode("job1234"))
+                .school("Graduate University").major("Computer Science").grade("2024")
+                .target("job").role("user").status("normal").build());
+            jobUser.setCreatedAt(thirtyDaysAgo);
+            userRepository.save(jobUser);
+        }
     }
 
     private void initQuestionBanks() {
@@ -114,6 +155,78 @@ public class DataInitializer implements CommandLineRunner {
             });
     }
 
+
+    private void initEmploymentData() {
+        java.time.LocalDateTime fairStart = java.time.LocalDateTime.now().plusDays(7).withHour(14).withMinute(0).withSecond(0).withNano(0);
+        if (!careerFairRepository.existsByTitleAndCompanyNameAndStartTime("Internet Campus Career Fair", "Future Tech", fairStart)) {
+            careerFairRepository.save(CareerFair.builder()
+                .title("Internet Campus Career Fair")
+                .companyName("Future Tech")
+                .city("Shanghai")
+                .industry("Internet")
+                .targetRoles("Backend,Frontend,Product")
+                .location("Student Center A101")
+                .startTime(fairStart)
+                .endTime(fairStart.plusHours(2))
+                .applyDeadline(fairStart.plusDays(3))
+                .applyUrl("https://jobs.example.com/future-tech")
+                .description("Campus recruitment briefing and online application guidance.")
+                .active(true)
+                .build());
+        }
+
+        if (!careerFairRepository.existsByTitleAndCompanyNameAndStartTime("Smart Manufacturing Fair", "Harbor Equipment Group", fairStart.plusDays(3))) {
+            careerFairRepository.save(CareerFair.builder()
+                .title("Smart Manufacturing Fair")
+                .companyName("Harbor Equipment Group")
+                .city("Suzhou")
+                .industry("Manufacturing")
+                .targetRoles("QA,Embedded,Supply Chain")
+                .location("Career Center 2F")
+                .startTime(fairStart.plusDays(3))
+                .endTime(fairStart.plusDays(3).plusHours(3))
+                .applyDeadline(fairStart.plusDays(6))
+                .applyUrl("https://jobs.example.com/manufacturing")
+                .description("Joint smart manufacturing recruitment event.")
+                .active(true)
+                .build());
+        }
+
+        if (!jobPostingRepository.existsByTitleAndCompanyName("Java Backend Engineer", "Future Tech")) {
+            jobPostingRepository.save(JobPosting.builder()
+                .title("Java Backend Engineer")
+                .companyName("Future Tech")
+                .city("Shanghai")
+                .industry("Internet")
+                .roleType("Backend")
+                .salaryRange("18k-25k")
+                .educationRequirement("Bachelor or above")
+                .majorKeywords("Computer Science,Software Engineering,Information Systems")
+                .skillTags("Java,Spring Boot,MySQL,Redis")
+                .description("Build backend services for campus recruitment products.")
+                .applyUrl("https://jobs.example.com/java-backend")
+                .active(true)
+                .build());
+        }
+
+        if (!jobPostingRepository.existsByTitleAndCompanyName("Product Operations Trainee", "Harbor Equipment Group")) {
+            jobPostingRepository.save(JobPosting.builder()
+                .title("Product Operations Trainee")
+                .companyName("Harbor Equipment Group")
+                .city("Suzhou")
+                .industry("Manufacturing")
+                .roleType("Product Operations")
+                .salaryRange("10k-15k")
+                .educationRequirement("Bachelor or above")
+                .majorKeywords("Management,Automation,Computer Science")
+                .skillTags("Data Analysis,Communication,Project Management")
+                .description("Analyze product operations and join the graduate trainee program.")
+                .applyUrl("https://jobs.example.com/product-operation")
+                .active(true)
+                .build());
+        }
+    }
+
     private void createBank(String name, String target, String subject, String desc, String difficulty, String[][] questions) {
         QuestionBank bank = QuestionBank.builder()
             .name(name).target(target).subject(subject).description(desc).difficulty(difficulty)
@@ -135,5 +248,129 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         bankRepository.save(bank);
+    }
+
+    private void initKaoGongData() {
+        initCivilServicePosts();
+        initScoreLines();
+        initCalendarEvents();
+    }
+
+    private void initCivilServicePosts() {
+        long count = civilServicePostRepository.count();
+        if (count > 0) {
+            return;
+        }
+
+        java.time.LocalDate start = java.time.LocalDate.now().plusDays(10);
+        civilServicePostRepository.save(CivilServicePost.builder()
+            .examType("国家公务员考试").year(2027).region("北京")
+            .jobName("综合管理岗").recruitingUnit("国家税务总局北京市税务局")
+            .unitType("中央机关直属机构").jobCategory("综合管理").recruitCount(3)
+            .educationRequirement("本科及以上").degreeRequirement("学士及以上")
+            .majorRequirement("计算机科学, 软件工程, 信息管理")
+            .householdRequirement("不限").politicalStatusRequirement("不限")
+            .examSubjects("行测, 申论").registrationStart(start).registrationEnd(start.plusDays(8))
+            .sourceUrl("https://example.edu/kaogong/jobs/1")
+            .remark("示例数据，用于岗位匹配功能联调。")
+            .build());
+
+        civilServicePostRepository.save(CivilServicePost.builder()
+            .examType("上海市公务员考试").year(2027).region("上海")
+            .jobName("信息化建设岗").recruitingUnit("上海市某区政务服务中心")
+            .unitType("地方机关").jobCategory("行政执法").recruitCount(2)
+            .educationRequirement("本科及以上").degreeRequirement("学士及以上")
+            .majorRequirement("计算机, 电子信息, 数据科学")
+            .householdRequirement("上海生源优先").politicalStatusRequirement("不限")
+            .examSubjects("行测, 申论, 专业科目").registrationStart(start.plusDays(20)).registrationEnd(start.plusDays(28))
+            .sourceUrl("https://example.edu/kaogong/jobs/2")
+            .remark("示例数据，可替换为正式招录公告数据。")
+            .build());
+
+        civilServicePostRepository.save(CivilServicePost.builder()
+            .examType("事业单位考试").year(2027).region("江苏")
+            .jobName("网络安全技术岗").recruitingUnit("江苏省某事业单位")
+            .unitType("事业单位").jobCategory("专业技术").recruitCount(1)
+            .educationRequirement("本科及以上").degreeRequirement("不限")
+            .majorRequirement("网络空间安全, 计算机科学")
+            .householdRequirement("不限").politicalStatusRequirement("中共党员")
+            .examSubjects("职业能力倾向测验, 综合应用能力").registrationStart(start.plusDays(32)).registrationEnd(start.plusDays(40))
+            .sourceUrl("https://example.edu/kaogong/jobs/3")
+            .remark("示例数据，覆盖政治面貌匹配场景。")
+            .build());
+    }
+
+    private void initScoreLines() {
+        long count = scoreLineRepository.count();
+        if (count > 0) {
+            return;
+        }
+
+        scoreLineRepository.save(InterviewScoreLine.builder()
+            .region("北京").year(2026).examType("国家公务员考试")
+            .unitType("中央机关直属机构").jobCategory("综合管理")
+            .jobName("综合管理岗").recruitingUnit("国家税务总局北京市税务局")
+            .scoreLine(new java.math.BigDecimal("128.60")).interviewRatio("3:1")
+            .recruitCount(3).interviewCount(9)
+            .dataNote("示例进面分数线，正式使用时以公告为准。")
+            .source("平台维护示例数据")
+            .build());
+
+        scoreLineRepository.save(InterviewScoreLine.builder()
+            .region("上海").year(2026).examType("上海市公务员考试")
+            .unitType("地方机关").jobCategory("行政执法")
+            .jobName("信息化建设岗").recruitingUnit("上海市某区政务服务中心")
+            .scoreLine(new java.math.BigDecimal("134.20")).interviewRatio("3:1")
+            .recruitCount(2).interviewCount(6)
+            .dataNote("示例数据，用于筛选与列表展示。")
+            .source("平台维护示例数据")
+            .build());
+
+        scoreLineRepository.save(InterviewScoreLine.builder()
+            .region("江苏").year(2025).examType("事业单位考试")
+            .unitType("事业单位").jobCategory("专业技术")
+            .jobName("网络安全技术岗").recruitingUnit("江苏省某事业单位")
+            .scoreLine(new java.math.BigDecimal("72.50")).interviewRatio("5:1")
+            .recruitCount(1).interviewCount(5)
+            .dataNote("事业单位分数线口径可能与公务员考试不同。")
+            .source("平台维护示例数据")
+            .build());
+    }
+
+    private void initCalendarEvents() {
+        long count = calendarEventRepository.count();
+        if (count > 0 && count <= 18) {
+            calendarEventRepository.deleteAll();
+        } else if (count > 0) {
+            return;
+        }
+
+        java.time.LocalDate base = java.time.LocalDate.now().plusDays(7);
+        String[] nodes = {"公告发布", "报名开始", "报名截止", "资格审查", "缴费截止", "准考证打印", "笔试", "成绩公布", "面试"};
+        for (int i = 0; i < nodes.length; i++) {
+            calendarEventRepository.save(ExamCalendarEvent.builder()
+                .region("北京")
+                .examType("国家公务员考试")
+                .year(2027)
+                .nodeType(nodes[i])
+                .title("2027 国家公务员考试北京考区：" + nodes[i])
+                .eventDate(base.plusDays(i * 5L))
+                .description("示例考试节点，后续可由管理员维护正式时间。")
+                .sourceUrl("https://example.edu/kaogong/calendar")
+                .build());
+        }
+
+        for (int i = 0; i < nodes.length; i++) {
+            calendarEventRepository.save(ExamCalendarEvent.builder()
+                .region("上海")
+                .examType("上海市公务员考试")
+                .year(2027)
+                .nodeType(nodes[i])
+                .title("2027 上海市公务员考试：" + nodes[i])
+                .eventDate(base.plusDays(3 + i * 6L))
+                .description("示例考试节点，用于日历订阅功能联调。")
+                .sourceUrl("https://example.edu/kaogong/calendar/shanghai")
+                .build());
+        }
     }
 }

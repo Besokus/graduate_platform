@@ -1,5 +1,4 @@
 package com.graduateplatform.community.entity;
-
 import com.graduateplatform.common.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -37,9 +36,11 @@ public class Post {
     private String visibility; // public / members
 
     @Column(nullable = false)
+    @Builder.Default
     private Boolean anonymous = false;
 
     @Column(nullable = false)
+    @Builder.Default
     private Boolean hasAttachment = false;
 
     @Column(length = 500)
