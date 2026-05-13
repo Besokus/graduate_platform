@@ -1,16 +1,18 @@
-package com.graduateplatform.questionbank.entity;
+package com.graduateplatform.kaogong.entity;
+
+
 import com.graduateplatform.common.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "attempts")
+@Table(name = "score_line_favorites")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Attempt {
+public class ScoreLineFavorite {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,14 +23,8 @@ public class Attempt {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "question_id", nullable = false)
-    private Question question;
-
-    @Column(nullable = false)
-    private String answer;
-
-    @Column(nullable = false)
-    private Boolean correct;
+    @JoinColumn(name = "score_line_id", nullable = false)
+    private InterviewScoreLine scoreLine;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

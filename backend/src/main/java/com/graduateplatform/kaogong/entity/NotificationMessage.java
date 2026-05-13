@@ -1,16 +1,18 @@
-package com.graduateplatform.questionbank.entity;
+package com.graduateplatform.kaogong.entity;
+
+
 import com.graduateplatform.common.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "attempts")
+@Table(name = "notification_messages")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Attempt {
+public class NotificationMessage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -20,15 +22,18 @@ public class Attempt {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "question_id", nullable = false)
-    private Question question;
-
     @Column(nullable = false)
-    private String answer;
+    private String title;
 
-    @Column(nullable = false)
-    private Boolean correct;
+    @Column(nullable = false, length = 1000)
+    private String content;
+
+    private String sourceType;
+
+    private Long sourceId;
+
+    @Builder.Default
+    private Boolean readFlag = false;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

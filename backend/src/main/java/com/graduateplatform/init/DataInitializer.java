@@ -1,16 +1,23 @@
 package com.graduateplatform.init;
 
+
 import com.graduateplatform.common.entity.User;
 import com.graduateplatform.common.repository.UserRepository;
 import com.graduateplatform.community.entity.PostCategory;
 import com.graduateplatform.community.repository.PostCategoryRepository;
-import com.graduateplatform.questionbank.entity.Question;
-import com.graduateplatform.questionbank.entity.QuestionBank;
-import com.graduateplatform.questionbank.repository.QuestionBankRepository;
 import com.graduateplatform.job.entity.CareerFair;
 import com.graduateplatform.job.entity.JobPosting;
 import com.graduateplatform.job.repository.CareerFairRepository;
 import com.graduateplatform.job.repository.JobPostingRepository;
+import com.graduateplatform.kaogong.entity.CivilServicePost;
+import com.graduateplatform.kaogong.entity.ExamCalendarEvent;
+import com.graduateplatform.kaogong.entity.InterviewScoreLine;
+import com.graduateplatform.kaogong.repository.CivilServicePostRepository;
+import com.graduateplatform.kaogong.repository.ExamCalendarEventRepository;
+import com.graduateplatform.kaogong.repository.InterviewScoreLineRepository;
+import com.graduateplatform.questionbank.entity.Question;
+import com.graduateplatform.questionbank.entity.QuestionBank;
+import com.graduateplatform.questionbank.repository.QuestionBankRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -23,16 +30,25 @@ public class DataInitializer implements CommandLineRunner {
     private final QuestionBankRepository bankRepository;
     private final CareerFairRepository careerFairRepository;
     private final JobPostingRepository jobPostingRepository;
+    private final CivilServicePostRepository civilServicePostRepository;
+    private final InterviewScoreLineRepository scoreLineRepository;
+    private final ExamCalendarEventRepository calendarEventRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataInitializer(PostCategoryRepository categoryRepository, UserRepository userRepository,
                            QuestionBankRepository bankRepository,
                            CareerFairRepository careerFairRepository,
                            JobPostingRepository jobPostingRepository,
+                           CivilServicePostRepository civilServicePostRepository,
+                           InterviewScoreLineRepository scoreLineRepository,
+                           ExamCalendarEventRepository calendarEventRepository,
                            PasswordEncoder passwordEncoder) {
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
         this.bankRepository = bankRepository;
+        this.civilServicePostRepository = civilServicePostRepository;
+        this.scoreLineRepository = scoreLineRepository;
+        this.calendarEventRepository = calendarEventRepository;
         this.careerFairRepository = careerFairRepository;
         this.jobPostingRepository = jobPostingRepository;
         this.passwordEncoder = passwordEncoder;
@@ -44,6 +60,7 @@ public class DataInitializer implements CommandLineRunner {
         initUsers();
         initQuestionBanks();
         initEmploymentData();
+        initKaoGongData();
     }
 
     private void initCategories() {
@@ -224,5 +241,129 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         bankRepository.save(bank);
+    }
+
+    private void initKaoGongData() {
+        initCivilServicePosts();
+        initScoreLines();
+        initCalendarEvents();
+    }
+
+    private void initCivilServicePosts() {
+        long count = civilServicePostRepository.count();
+        if (count > 0) {
+            return;
+        }
+
+        java.time.LocalDate start = java.time.LocalDate.now().plusDays(10);
+        civilServicePostRepository.save(CivilServicePost.builder()
+            .examType("国家公务员考试").year(2027).region("北京")
+            .jobName("综合管理岗").recruitingUnit("国家税务总局北京市税务局")
+            .unitType("中央机关直属机构").jobCategory("综合管理").recruitCount(3)
+            .educationRequirement("本科及以上").degreeRequirement("学士及以上")
+            .majorRequirement("计算机科学, 软件工程, 信息管理")
+            .householdRequirement("不限").politicalStatusRequirement("不限")
+            .examSubjects("行测, 申论").registrationStart(start).registrationEnd(start.plusDays(8))
+            .sourceUrl("https://example.edu/kaogong/jobs/1")
+            .remark("示例数据，用于岗位匹配功能联调。")
+            .build());
+
+        civilServicePostRepository.save(CivilServicePost.builder()
+            .examType("上海市公务员考试").year(2027).region("上海")
+            .jobName("信息化建设岗").recruitingUnit("上海市某区政务服务中心")
+            .unitType("地方机关").jobCategory("行政执法").recruitCount(2)
+            .educationRequirement("本科及以上").degreeRequirement("学士及以上")
+            .majorRequirement("计算机, 电子信息, 数据科学")
+            .householdRequirement("上海生源优先").politicalStatusRequirement("不限")
+            .examSubjects("行测, 申论, 专业科目").registrationStart(start.plusDays(20)).registrationEnd(start.plusDays(28))
+            .sourceUrl("https://example.edu/kaogong/jobs/2")
+            .remark("示例数据，可替换为正式招录公告数据。")
+            .build());
+
+        civilServicePostRepository.save(CivilServicePost.builder()
+            .examType("事业单位考试").year(2027).region("江苏")
+            .jobName("网络安全技术岗").recruitingUnit("江苏省某事业单位")
+            .unitType("事业单位").jobCategory("专业技术").recruitCount(1)
+            .educationRequirement("本科及以上").degreeRequirement("不限")
+            .majorRequirement("网络空间安全, 计算机科学")
+            .householdRequirement("不限").politicalStatusRequirement("中共党员")
+            .examSubjects("职业能力倾向测验, 综合应用能力").registrationStart(start.plusDays(32)).registrationEnd(start.plusDays(40))
+            .sourceUrl("https://example.edu/kaogong/jobs/3")
+            .remark("示例数据，覆盖政治面貌匹配场景。")
+            .build());
+    }
+
+    private void initScoreLines() {
+        long count = scoreLineRepository.count();
+        if (count > 0) {
+            return;
+        }
+
+        scoreLineRepository.save(InterviewScoreLine.builder()
+            .region("北京").year(2026).examType("国家公务员考试")
+            .unitType("中央机关直属机构").jobCategory("综合管理")
+            .jobName("综合管理岗").recruitingUnit("国家税务总局北京市税务局")
+            .scoreLine(new java.math.BigDecimal("128.60")).interviewRatio("3:1")
+            .recruitCount(3).interviewCount(9)
+            .dataNote("示例进面分数线，正式使用时以公告为准。")
+            .source("平台维护示例数据")
+            .build());
+
+        scoreLineRepository.save(InterviewScoreLine.builder()
+            .region("上海").year(2026).examType("上海市公务员考试")
+            .unitType("地方机关").jobCategory("行政执法")
+            .jobName("信息化建设岗").recruitingUnit("上海市某区政务服务中心")
+            .scoreLine(new java.math.BigDecimal("134.20")).interviewRatio("3:1")
+            .recruitCount(2).interviewCount(6)
+            .dataNote("示例数据，用于筛选与列表展示。")
+            .source("平台维护示例数据")
+            .build());
+
+        scoreLineRepository.save(InterviewScoreLine.builder()
+            .region("江苏").year(2025).examType("事业单位考试")
+            .unitType("事业单位").jobCategory("专业技术")
+            .jobName("网络安全技术岗").recruitingUnit("江苏省某事业单位")
+            .scoreLine(new java.math.BigDecimal("72.50")).interviewRatio("5:1")
+            .recruitCount(1).interviewCount(5)
+            .dataNote("事业单位分数线口径可能与公务员考试不同。")
+            .source("平台维护示例数据")
+            .build());
+    }
+
+    private void initCalendarEvents() {
+        long count = calendarEventRepository.count();
+        if (count > 0 && count <= 18) {
+            calendarEventRepository.deleteAll();
+        } else if (count > 0) {
+            return;
+        }
+
+        java.time.LocalDate base = java.time.LocalDate.now().plusDays(7);
+        String[] nodes = {"公告发布", "报名开始", "报名截止", "资格审查", "缴费截止", "准考证打印", "笔试", "成绩公布", "面试"};
+        for (int i = 0; i < nodes.length; i++) {
+            calendarEventRepository.save(ExamCalendarEvent.builder()
+                .region("北京")
+                .examType("国家公务员考试")
+                .year(2027)
+                .nodeType(nodes[i])
+                .title("2027 国家公务员考试北京考区：" + nodes[i])
+                .eventDate(base.plusDays(i * 5L))
+                .description("示例考试节点，后续可由管理员维护正式时间。")
+                .sourceUrl("https://example.edu/kaogong/calendar")
+                .build());
+        }
+
+        for (int i = 0; i < nodes.length; i++) {
+            calendarEventRepository.save(ExamCalendarEvent.builder()
+                .region("上海")
+                .examType("上海市公务员考试")
+                .year(2027)
+                .nodeType(nodes[i])
+                .title("2027 上海市公务员考试：" + nodes[i])
+                .eventDate(base.plusDays(3 + i * 6L))
+                .description("示例考试节点，用于日历订阅功能联调。")
+                .sourceUrl("https://example.edu/kaogong/calendar/shanghai")
+                .build());
+        }
     }
 }
