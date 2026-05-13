@@ -144,6 +144,22 @@ class EmploymentModuleIntegrationTest {
     }
 
     @Test
+    void createApplicationWithMissingJobPostingReturnsClearMessage() throws Exception {
+        mockMvc.perform(post("/api/job/applications")
+                .header("Authorization", "Bearer " + userToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of(
+                    "companyName", "Missing Corp",
+                    "jobTitle", "Missing Role",
+                    "jobPostingId", 999999,
+                    "status", "APPLIED"
+                ))))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.message").value("岗位不存在"));
+    }
+
+    @Test
     void recommendationsUseRuleMatchingWithoutExternalService() throws Exception {
         jobRepository.save(JobPosting.builder()
             .title("Java Backend Engineer").companyName("Future Tech").city("Shanghai").industry("Internet")

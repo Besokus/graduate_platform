@@ -254,7 +254,7 @@ public class EmploymentService {
         List<JobSubscriptionPreference> prefs = preferenceRepository.findByActiveTrue();
         List<EmploymentNotification> created = new ArrayList<>();
         for (JobSubscriptionPreference pref : prefs) {
-            if (matchesPreference(pref, source.city(), source.industry(), source.roleType(), "")) {
+            if (matchesPreference(pref, source.city(), source.industry(), source.roleType())) {
                 EmploymentNotification notification = EmploymentNotification.builder()
                     .user(pref.getUser())
                     .title(source.title())
@@ -347,17 +347,16 @@ public class EmploymentService {
         return map;
     }
 
-    private boolean matchesPreference(JobSubscriptionPreference pref, String city, String industry, String roleType, String skills) {
+    private boolean matchesPreference(JobSubscriptionPreference pref, String city, String industry, String roleType) {
         return matchesAny(pref.getCities(), city)
             || matchesAny(pref.getIndustries(), industry)
             || matchesAny(pref.getRoleTypes(), roleType)
-            || matchesAny(skills, pref.getRoleTypes())
             || (!hasText(pref.getCities()) && !hasText(pref.getIndustries()) && !hasText(pref.getRoleTypes()));
     }
 
     private JobPosting resolveJob(Long id) {
         if (id == null) return null;
-        return jobRepository.findById(id).orElseThrow(() -> new BusinessException("new matched item: "));
+        return jobRepository.findById(id).orElseThrow(() -> new BusinessException("岗位不存在"));
     }
 
     private User ensureUser(Long userId) {

@@ -28,11 +28,11 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // 认证相关 POST 接口放行
+                // Public authentication POST endpoints
                 .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login", "/api/auth/send-code").permitAll()
-                // 管理员接口需先于通用 /api/** GET 放行规则声明
+                // Admin APIs must be declared before generic /api/** GET allow rules
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                // 考公方向中仅允许登录用户访问的接口
+                // Kaogong endpoints that require authenticated users
                 .requestMatchers(HttpMethod.GET, "/api/kaogong/jobs/favorites").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/kaogong/jobs/match-history").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/kaogong/score-lines/favorites").authenticated()
@@ -56,17 +56,17 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/kaogong/interviews/*/attachments").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/kaogong/interviews/*/feedback").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/kaogong/jobs/match").permitAll()
-                // 就业方向公开查询接口放行，其余就业个人数据接口需登录
+                // Employment public browse endpoints are open, personal data endpoints require auth
                 .requestMatchers(HttpMethod.GET, "/api/job/fairs/**", "/api/job/postings/**").permitAll()
                 .requestMatchers("/api/job/resume/**", "/api/job/applications/**", "/api/job/notifications/**",
                     "/api/job/preferences/**", "/api/job/recommendations/**").authenticated()
-                // 通用 GET 接口默认放行，支持未登录浏览内容
+                // Generic GET APIs are public for read-only browsing
                 .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
-                // 写入、答题和用户信息接口需登录
+                // Write operations, question attempts, and user profile APIs require auth
                 .requestMatchers(HttpMethod.POST, "/api/posts/**").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/questions/*/attempt").authenticated()
                 .requestMatchers("/api/auth/me", "/api/auth/logout", "/api/users/**").authenticated()
-                // H2 控制台放行
+                // H2 console
                 .requestMatchers("/h2-console/**").permitAll()
                 .anyRequest().authenticated()
             )
