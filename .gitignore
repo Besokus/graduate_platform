@@ -29,8 +29,13 @@ logs/
 .DS_Store
 Thumbs.db
 desktop.ini
+Microsoft/
 
 # Java binaries
 *.class
 *.jar
 *.war
+
+# Local/generated artifacts
+.omx/
+docs/

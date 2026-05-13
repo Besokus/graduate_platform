@@ -28,9 +28,11 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // Public authentication POST endpoints
                 .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login", "/api/auth/send-code").permitAll()
+                // Admin APIs must be declared before generic /api/** GET allow rules
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/auth/me", "/api/auth/logout", "/api/users/**").authenticated()
+                // Kaogong endpoints that require authenticated users
                 .requestMatchers(HttpMethod.GET, "/api/kaogong/jobs/favorites").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/kaogong/jobs/match-history").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/kaogong/score-lines/favorites").authenticated()
@@ -54,9 +56,17 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/kaogong/interviews/*/attachments").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/kaogong/interviews/*/feedback").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/kaogong/jobs/match").permitAll()
+                // Employment public browse endpoints are open, personal data endpoints require auth
+                .requestMatchers(HttpMethod.GET, "/api/job/fairs/**", "/api/job/postings/**").permitAll()
+                .requestMatchers("/api/job/resume/**", "/api/job/applications/**", "/api/job/notifications/**",
+                    "/api/job/preferences/**", "/api/job/recommendations/**").authenticated()
+                // Generic GET APIs are public for read-only browsing
+                .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
+                // Write operations, question attempts, and user profile APIs require auth
                 .requestMatchers(HttpMethod.POST, "/api/posts/**").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/questions/*/attempt").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
+                .requestMatchers("/api/auth/me", "/api/auth/logout", "/api/users/**").authenticated()
+                // H2 console
                 .requestMatchers("/h2-console/**").permitAll()
                 .anyRequest().authenticated()
             )

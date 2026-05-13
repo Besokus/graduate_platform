@@ -1,17 +1,18 @@
-package com.graduateplatform.questionbank.entity;
+package com.graduateplatform.job.entity;
+
 import com.graduateplatform.common.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "attempts")
+@Table(name = "employment_notifications")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Attempt {
-
+public class EmploymentNotification {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -20,18 +21,26 @@ public class Attempt {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "question_id", nullable = false)
-    private Question question;
+    @Column(nullable = false, length = 160)
+    private String title;
 
-    @Column(nullable = false)
-    private String answer;
+    @Lob
+    @Column(nullable = false, columnDefinition = "LONGTEXT")
+    private String content;
 
+    @Column(length = 40)
+    private String relatedType;
+
+    private Long relatedId;
+
+    @Builder.Default
     @Column(nullable = false)
-    private Boolean correct;
+    private Boolean readFlag = false;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    private LocalDateTime readAt;
 
     @PrePersist
     protected void onCreate() {

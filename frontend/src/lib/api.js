@@ -106,6 +106,90 @@ export const practiceApi = {
   },
 }
 
+
+function appendParams(path, params = {}) {
+  const search = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      search.set(key, String(value))
+    }
+  })
+  const query = search.toString()
+  return query ? `${path}?${query}` : path
+}
+
+export const employmentApi = {
+  fairs(params = {}) {
+    return request(appendParams('/api/job/fairs', params))
+  },
+  postings(params = {}) {
+    return request(appendParams('/api/job/postings', params))
+  },
+  preference(token) {
+    return request('/api/job/preferences', { token })
+  },
+  savePreference(payload, token) {
+    return request('/api/job/preferences', { method: 'PUT', body: payload, token })
+  },
+  resume(token) {
+    return request('/api/job/resume', { token })
+  },
+  saveResume(payload, token) {
+    return request('/api/job/resume', { method: 'PUT', body: payload, token })
+  },
+  recommendations(params = {}, token) {
+    return request(appendParams('/api/job/recommendations', params), { token })
+  },
+  applications(token) {
+    return request('/api/job/applications', { token })
+  },
+  createApplication(payload, token) {
+    return request('/api/job/applications', { method: 'POST', body: payload, token })
+  },
+  updateApplication(id, payload, token) {
+    return request(`/api/job/applications/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteApplication(id, token) {
+    return request(`/api/job/applications/${id}`, { method: 'DELETE', token })
+  },
+  notifications(token) {
+    return request('/api/job/notifications', { token })
+  },
+  markNotificationRead(id, token) {
+    return request(`/api/job/notifications/${id}/read`, { method: 'PUT', token })
+  },
+}
+
+export const adminEmploymentApi = {
+  fairs(token) {
+    return request('/api/admin/employment/fairs', { token })
+  },
+  createFair(payload, token) {
+    return request('/api/admin/employment/fairs', { method: 'POST', body: payload, token })
+  },
+  updateFair(id, payload, token) {
+    return request(`/api/admin/employment/fairs/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteFair(id, token) {
+    return request(`/api/admin/employment/fairs/${id}`, { method: 'DELETE', token })
+  },
+  jobs(token) {
+    return request('/api/admin/employment/jobs', { token })
+  },
+  createJob(payload, token) {
+    return request('/api/admin/employment/jobs', { method: 'POST', body: payload, token })
+  },
+  updateJob(id, payload, token) {
+    return request(`/api/admin/employment/jobs/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteJob(id, token) {
+    return request(`/api/admin/employment/jobs/${id}`, { method: 'DELETE', token })
+  },
+  triggerNotification(payload, token) {
+    return request('/api/admin/employment/notifications/trigger', { method: 'POST', body: payload, token })
+  },
+}
+
 export const userApi = {
   profile(token) {
     return request('/api/users/me/profile', { token })
