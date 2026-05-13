@@ -512,6 +512,32 @@ export const kaogongApi = {
   },
 }
 
+export const kaoyanApi = {
+  schoolsPage(params = {}) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') search.set(k, v)
+    })
+    return request(`/api/kaoyan/schools/page?${search.toString()}`)
+  },
+  scoreLinesPage(params = {}) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') search.set(k, v)
+    })
+    return request(`/api/kaoyan/score-lines/page?${search.toString()}`)
+  },
+  favoriteScoreLine(id, token) {
+    return request(`/api/kaoyan/score-lines/${id}/favorite`, { method: 'POST', token })
+  },
+  unfavoriteScoreLine(id, token) {
+    return request(`/api/kaoyan/score-lines/${id}/favorite`, { method: 'DELETE', token })
+  },
+  favoriteScoreLines(token) {
+    return request('/api/kaoyan/score-lines/favorites', { token })
+  },
+}
+
 export const adminApi = {
   dashboard(token) {
     return request('/api/admin/dashboard', { token })
@@ -597,5 +623,38 @@ export const adminApi = {
   },
   deleteKaogongCalendarEvent(id, token) {
     return request(`/api/admin/kaogong/calendar-events/${id}`, { method: 'DELETE', token })
+  },
+  // 考研管理
+  kaoyanSchools(params = {}, token) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') search.set(k, v)
+    })
+    return request(`/api/admin/kaoyan/schools?${search.toString()}`, { token })
+  },
+  createKaoyanSchool(payload, token) {
+    return request('/api/admin/kaoyan/schools', { method: 'POST', body: payload, token })
+  },
+  updateKaoyanSchool(id, payload, token) {
+    return request(`/api/admin/kaoyan/schools/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteKaoyanSchool(id, token) {
+    return request(`/api/admin/kaoyan/schools/${id}`, { method: 'DELETE', token })
+  },
+  kaoyanScoreLines(params = {}, token) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') search.set(k, v)
+    })
+    return request(`/api/admin/kaoyan/score-lines?${search.toString()}`, { token })
+  },
+  createKaoyanScoreLine(payload, token) {
+    return request('/api/admin/kaoyan/score-lines', { method: 'POST', body: payload, token })
+  },
+  updateKaoyanScoreLine(id, payload, token) {
+    return request(`/api/admin/kaoyan/score-lines/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteKaoyanScoreLine(id, token) {
+    return request(`/api/admin/kaoyan/score-lines/${id}`, { method: 'DELETE', token })
   },
 }

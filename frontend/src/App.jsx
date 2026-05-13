@@ -47,6 +47,7 @@ import UserManagementPage from './pages/admin/UserManagementPage.jsx'
 import KaogongDataPage from './pages/admin/KaogongDataPage.jsx'
 import ReportPage from './pages/admin/ReportPage.jsx'
 import EmploymentManagementPage from './pages/admin/EmploymentManagementPage.jsx'
+import AdminKaoyanDataPage from './pages/admin/AdminKaoyanDataPage.jsx'
 
 export default function App() {
   return (
@@ -99,6 +100,7 @@ export default function App() {
       <Route path="/admin/kaogong-data" element={<KaogongDataPage />} />
       <Route path="/admin/reports" element={<ReportPage />} />
       <Route path="/admin/employment" element={<EmploymentManagementPage />} />
+      <Route path="/admin/kaoyan-data" element={<AdminKaoyanDataPage />} />
     </Routes>
     </>
   )
