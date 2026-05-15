@@ -267,6 +267,56 @@ export const userApi = {
   },
 }
 
+export const materialApi = {
+  listPage(params = {}) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') search.set(k, v)
+    })
+    return request(`/api/kaoyan/materials/page?${search.toString()}`)
+  },
+  detail(id, token) {
+    return request(`/api/kaoyan/materials/${id}`, { token })
+  },
+  myMaterials(params = {}, token) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') search.set(k, v)
+    })
+    return request(`/api/kaoyan/materials/my?${search.toString()}`, { token })
+  },
+  downloadUrl(materialId, attachmentId) {
+    return `${API_BASE}/api/kaoyan/materials/${materialId}/download/${attachmentId}`
+  },
+}
+
+export const adminMaterialApi = {
+  pending(params = {}, token) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') search.set(k, v)
+    })
+    return request(`/api/admin/kaoyan/materials/pending?${search.toString()}`, { token })
+  },
+  listPage(params = {}, token) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') search.set(k, v)
+    })
+    return request(`/api/admin/kaoyan/materials/page?${search.toString()}`, { token })
+  },
+  review(id, status, token) {
+    return request(`/api/admin/kaoyan/materials/${id}/review`, {
+      method: 'PUT',
+      body: { status },
+      token,
+    })
+  },
+  delete(id, token) {
+    return request(`/api/admin/kaoyan/materials/${id}`, { method: 'DELETE', token })
+  },
+}
+
 export const studyAbroadApi = {
   timeline(token) {
     return request('/api/studyabroad/timeline', { token })
