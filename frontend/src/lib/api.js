@@ -538,6 +538,36 @@ export const kaoyanApi = {
   },
 }
 
+export const studyPlanApi = {
+  createPlan(payload, token) {
+    return request('/api/kaoyan/plans', { method: 'POST', body: payload, token })
+  },
+  myPlans(token) {
+    return request('/api/kaoyan/plans', { token })
+  },
+  planDetail(id, token) {
+    return request(`/api/kaoyan/plans/${id}`, { token })
+  },
+  updatePlan(id, payload, token) {
+    return request(`/api/kaoyan/plans/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deletePlan(id, token) {
+    return request(`/api/kaoyan/plans/${id}`, { method: 'DELETE', token })
+  },
+  addCheckIn(planId, payload, token) {
+    return request(`/api/kaoyan/plans/${planId}/checkins`, { method: 'POST', body: payload, token })
+  },
+  checkIns(planId, token) {
+    return request(`/api/kaoyan/plans/${planId}/checkins`, { token })
+  },
+  updateCheckIn(id, payload, token) {
+    return request(`/api/kaoyan/checkins/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteCheckIn(id, token) {
+    return request(`/api/kaoyan/checkins/${id}`, { method: 'DELETE', token })
+  },
+}
+
 export const adminApi = {
   dashboard(token) {
     return request('/api/admin/dashboard', { token })

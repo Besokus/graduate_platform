@@ -16,6 +16,7 @@ import PostEditPage from './pages/PostEditPage.jsx'
 import KaoyanPage from './pages/kaoyan/KaoyanPage.jsx'
 import ScoreQueryPage from './pages/kaoyan/ScoreQueryPage.jsx'
 import StudyPlanPage from './pages/kaoyan/StudyPlanPage.jsx'
+import StudyPlanDetailPage from './pages/kaoyan/StudyPlanDetailPage.jsx'
 import MaterialsPage from './pages/kaoyan/MaterialsPage.jsx'
 import StudyRoomPage from './pages/kaoyan/StudyRoomPage.jsx'
 import ConsultPage from './pages/kaoyan/ConsultPage.jsx'
@@ -69,6 +70,7 @@ export default function App() {
       <Route path="/kaoyan" element={<KaoyanPage />} />
       <Route path="/kaoyan/scores" element={<ScoreQueryPage />} />
       <Route path="/kaoyan/plan" element={<StudyPlanPage />} />
+      <Route path="/kaoyan/plan/:id" element={<StudyPlanDetailPage />} />
       <Route path="/kaoyan/materials" element={<MaterialsPage />} />
       <Route path="/kaoyan/studyroom" element={<StudyRoomPage />} />
       <Route path="/kaoyan/consult" element={<ConsultPage />} />
