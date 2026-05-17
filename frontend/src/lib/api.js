@@ -588,6 +588,50 @@ export const kaoyanApi = {
   },
 }
 
+export const studyRoomApi = {
+  createRoom(payload, token) {
+    return request('/api/kaoyan/study-rooms', { method: 'POST', body: payload, token })
+  },
+  roomList(params = {}) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') search.set(k, v)
+    })
+    return request(`/api/kaoyan/study-rooms?${search.toString()}`)
+  },
+  roomDetail(id, token) {
+    return request(`/api/kaoyan/study-rooms/${id}`, { token })
+  },
+  joinRoom(id, token) {
+    return request(`/api/kaoyan/study-rooms/${id}/join`, { method: 'POST', token })
+  },
+  leaveRoom(token) {
+    return request('/api/kaoyan/study-rooms/leave', { method: 'POST', token })
+  },
+  messagesAfter(id, since, token) {
+    const url = since ? `/api/kaoyan/study-rooms/${id}/messages?since=${encodeURIComponent(since)}` : `/api/kaoyan/study-rooms/${id}/messages`
+    return request(url, { token })
+  },
+  sendMessage(id, content, token) {
+    return request(`/api/kaoyan/study-rooms/${id}/messages`, { method: 'POST', body: { content }, token })
+  },
+  roomStreamUrl(id) {
+    return `${API_BASE}/api/kaoyan/study-rooms/${id}/stream`
+  },
+  leaderboard(id, period, token) {
+    return request(`/api/kaoyan/study-rooms/${id}/leaderboard?period=${period}`, { token })
+  },
+  myCurrentRoom(token) {
+    return request('/api/kaoyan/study-rooms/me', { token })
+  },
+  myCreatedRooms(token) {
+    return request('/api/kaoyan/study-rooms/me/created', { token })
+  },
+  closeRoom(id, token) {
+    return request(`/api/kaoyan/study-rooms/${id}/close`, { method: 'PUT', token })
+  },
+}
+
 export const studyPlanApi = {
   createPlan(payload, token) {
     return request('/api/kaoyan/plans', { method: 'POST', body: payload, token })
