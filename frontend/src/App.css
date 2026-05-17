@@ -1473,7 +1473,7 @@
 
 .chat-composer {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   padding: 12px;
@@ -2596,12 +2596,7 @@
   }
 
   .chat-composer {
-    grid-template-columns: 40px minmax(0, 1fr);
-  }
-
-  .chat-composer .btn {
-    grid-column: 1 / -1;
-    width: 100%;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .chat-icon-button {
