@@ -8,29 +8,39 @@ import lombok.Data;
 import java.time.LocalDate;
 
 @Data
-public class MaterialRequest {
-    private Long applicationId;
-
-    @NotBlank
-    @Size(max = 80)
-    private String title;
-
+public class ApplicationRequest {
     @NotBlank
     @Size(max = 40)
     private String country;
 
     @NotBlank
-    @Size(max = 40)
-    private String stage;
+    @Size(max = 120)
+    private String school;
 
     @NotBlank
-    @Size(max = 60)
-    private String category;
+    @Size(max = 120)
+    private String program;
+
+    @NotBlank
+    @Size(max = 40)
+    private String degree;
+
+    @NotBlank
+    @Size(max = 40)
+    private String intake;
+
+    @NotBlank
+    @Size(max = 40)
+    private String applicationRound;
 
     @NotNull
     private LocalDate deadline;
 
-    private Boolean completed;
+    @Size(max = 20)
+    private String status;
+
+    @Size(max = 20)
+    private String priority;
 
     @Size(max = 500)
     private String note;

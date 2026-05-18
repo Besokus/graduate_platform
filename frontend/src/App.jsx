@@ -40,6 +40,7 @@ import ApplicationTrackingPage from './pages/job/ApplicationTrackingPage.jsx'
 
 // 留学方向专属页面
 import StudyAbroadPage from './pages/studyabroad/StudyAbroadPage.jsx'
+import ApplicationsPage from './pages/studyabroad/ApplicationsPage.jsx'
 import TimelinePage from './pages/studyabroad/TimelinePage.jsx'
 import SAMaterialsPage from './pages/studyabroad/SAMaterialsPage.jsx'
 import ExperiencePage from './pages/studyabroad/ExperiencePage.jsx'
@@ -98,6 +99,7 @@ export default function App() {
 
       {/* 留学方向专属 */}
       <Route path="/studyabroad" element={<StudyAbroadPage />} />
+      <Route path="/studyabroad/applications" element={<ApplicationsPage />} />
       <Route path="/studyabroad/timeline" element={<TimelinePage />} />
       <Route path="/studyabroad/materials" element={<SAMaterialsPage />} />
       <Route path="/studyabroad/experience" element={<ExperiencePage />} />

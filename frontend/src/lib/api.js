@@ -318,6 +318,34 @@ export const adminMaterialApi = {
 }
 
 export const studyAbroadApi = {
+  experiences(params = {}, token) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '' && value !== 'all') {
+        search.set(key, value)
+      }
+    })
+    const query = search.toString()
+    return request(`/api/studyabroad/experiences${query ? `?${query}` : ''}`, { token })
+  },
+  createExperience(payload, token) {
+    return request('/api/studyabroad/experiences', { method: 'POST', body: payload, token })
+  },
+  deleteExperience(id, token) {
+    return request(`/api/studyabroad/experiences/${id}`, { method: 'DELETE', token })
+  },
+  applications(token) {
+    return request('/api/studyabroad/applications', { token })
+  },
+  createApplication(payload, token) {
+    return request('/api/studyabroad/applications', { method: 'POST', body: payload, token })
+  },
+  updateApplication(id, payload, token) {
+    return request(`/api/studyabroad/applications/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteApplication(id, token) {
+    return request(`/api/studyabroad/applications/${id}`, { method: 'DELETE', token })
+  },
   timeline(token) {
     return request('/api/studyabroad/timeline', { token })
   },
