@@ -5,6 +5,7 @@ import com.graduateplatform.common.dto.ApiResponse;
 import com.graduateplatform.questionbank.service.AttemptService;
 import com.graduateplatform.questionbank.service.QuestionService;
 import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -25,7 +26,10 @@ public class QuestionController {
     }
 
     @PostMapping("/questions/{id}/attempt")
-    public ApiResponse<?> submitAttempt(@PathVariable Long id, @Valid @RequestBody SubmitAttemptRequest req) {
-        return ApiResponse.ok(attemptService.submit(id, req), "答题记录已保存");
+    public ApiResponse<?> submitAttempt(@PathVariable Long id,
+                                        @Valid @RequestBody SubmitAttemptRequest req,
+                                        Authentication auth) {
+        Long userId = (Long) auth.getPrincipal();
+        return ApiResponse.ok(attemptService.submit(id, userId, req), "答题记录已保存");
     }
 }
