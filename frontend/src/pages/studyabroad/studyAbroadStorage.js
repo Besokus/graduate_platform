@@ -1,5 +1,48 @@
 const TIMELINE_KEY = 'gp_studyabroad_timeline'
 const MATERIALS_KEY = 'gp_studyabroad_materials'
+const APPLICATIONS_KEY = 'gp_studyabroad_applications'
+
+export const defaultApplicationItems = [
+  {
+    id: 'ucl-cs',
+    country: 'UK',
+    school: 'University College London',
+    program: 'Computer Science MSc',
+    degree: 'Master',
+    intake: '2027 Fall',
+    applicationRound: 'Round 1',
+    deadline: '2026-10-15',
+    status: 'preparing',
+    priority: 'dream',
+    note: 'Focus on PS, transcript, recommendation letters, and IELTS score.',
+  },
+  {
+    id: 'manchester-ai',
+    country: 'UK',
+    school: 'University of Manchester',
+    program: 'Advanced Computer Science MSc',
+    degree: 'Master',
+    intake: '2027 Fall',
+    applicationRound: 'Rolling',
+    deadline: '2026-11-30',
+    status: 'planning',
+    priority: 'match',
+    note: 'Check course matching and scholarship deadline before submission.',
+  },
+  {
+    id: 'monash-it',
+    country: 'Australia',
+    school: 'Monash University',
+    program: 'Information Technology Master',
+    degree: 'Master',
+    intake: '2027 Spring',
+    applicationRound: 'Main',
+    deadline: '2026-09-20',
+    status: 'planning',
+    priority: 'safe',
+    note: 'Prepare passport scan, transcript, CV, and financial documents.',
+  },
+]
 
 export const defaultTimelineItems = [
   {
@@ -108,6 +151,14 @@ export function saveTimelineItems(items) {
   writeJson(TIMELINE_KEY, items)
 }
 
+export function getApplicationItems() {
+  return readJson(APPLICATIONS_KEY, defaultApplicationItems)
+}
+
+export function saveApplicationItems(items) {
+  writeJson(APPLICATIONS_KEY, items)
+}
+
 export function getMaterialItems() {
   return readJson(MATERIALS_KEY, defaultMaterialItems)
 }
@@ -117,6 +168,7 @@ export function saveMaterialItems(items) {
 }
 
 export function resetStudyAbroadStorage() {
+  localStorage.removeItem(APPLICATIONS_KEY)
   localStorage.removeItem(TIMELINE_KEY)
   localStorage.removeItem(MATERIALS_KEY)
 }

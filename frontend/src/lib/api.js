@@ -229,6 +229,18 @@ export const userApi = {
 }
 
 export const studyAbroadApi = {
+  applications(token) {
+    return request('/api/studyabroad/applications', { token })
+  },
+  createApplication(payload, token) {
+    return request('/api/studyabroad/applications', { method: 'POST', body: payload, token })
+  },
+  updateApplication(id, payload, token) {
+    return request(`/api/studyabroad/applications/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteApplication(id, token) {
+    return request(`/api/studyabroad/applications/${id}`, { method: 'DELETE', token })
+  },
   timeline(token) {
     return request('/api/studyabroad/timeline', { token })
   },
