@@ -112,6 +112,7 @@ public class StudyAbroadService {
         User user = ensureUser(userId);
         StudyAbroadTimeline item = StudyAbroadTimeline.builder()
             .user(user)
+            .application(findOwnedApplication(userId, req.getApplicationId()))
             .title(req.getTitle().trim())
             .country(req.getCountry().trim())
             .school(normalize(req.getSchool(), "School TBD"))
@@ -130,6 +131,7 @@ public class StudyAbroadService {
             .orElseThrow(() -> new BusinessException("Timeline item not found or access denied"));
 
         item.setTitle(req.getTitle().trim());
+        item.setApplication(findOwnedApplication(userId, req.getApplicationId()));
         item.setCountry(req.getCountry().trim());
         item.setSchool(normalize(req.getSchool(), "School TBD"));
         item.setPhase(req.getPhase().trim());
@@ -161,6 +163,7 @@ public class StudyAbroadService {
         User user = ensureUser(userId);
         StudyAbroadMaterial item = StudyAbroadMaterial.builder()
             .user(user)
+            .application(findOwnedApplication(userId, req.getApplicationId()))
             .title(req.getTitle().trim())
             .country(req.getCountry().trim())
             .stage(req.getStage().trim())
@@ -179,6 +182,7 @@ public class StudyAbroadService {
             .orElseThrow(() -> new BusinessException("Material item not found or access denied"));
 
         item.setTitle(req.getTitle().trim());
+        item.setApplication(findOwnedApplication(userId, req.getApplicationId()));
         item.setCountry(req.getCountry().trim());
         item.setStage(req.getStage().trim());
         item.setCategory(req.getCategory().trim());
@@ -210,6 +214,14 @@ public class StudyAbroadService {
             throw new BusinessException("Timeline status is invalid");
         }
         return normalized;
+    }
+
+    private StudyAbroadApplication findOwnedApplication(Long userId, Long applicationId) {
+        if (applicationId == null) {
+            return null;
+        }
+        return applicationRepository.findByIdAndUserId(applicationId, userId)
+            .orElseThrow(() -> new BusinessException("Application not found or access denied"));
     }
 
     private String normalizeApplicationStatus(String status) {
@@ -253,6 +265,7 @@ public class StudyAbroadService {
     private Map<String, Object> toTimelineMap(StudyAbroadTimeline item) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", item.getId());
+        appendApplicationSummary(map, item.getApplication());
         map.put("title", item.getTitle());
         map.put("country", item.getCountry());
         map.put("school", item.getSchool());
@@ -268,6 +281,7 @@ public class StudyAbroadService {
     private Map<String, Object> toMaterialMap(StudyAbroadMaterial item) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", item.getId());
+        appendApplicationSummary(map, item.getApplication());
         map.put("title", item.getTitle());
         map.put("country", item.getCountry());
         map.put("stage", item.getStage());
@@ -278,5 +292,11 @@ public class StudyAbroadService {
         map.put("createdAt", item.getCreatedAt() != null ? item.getCreatedAt().toString() : null);
         map.put("updatedAt", item.getUpdatedAt() != null ? item.getUpdatedAt().toString() : null);
         return map;
+    }
+
+    private void appendApplicationSummary(Map<String, Object> map, StudyAbroadApplication application) {
+        map.put("applicationId", application != null ? application.getId() : null);
+        map.put("applicationSchool", application != null ? application.getSchool() : null);
+        map.put("applicationProgram", application != null ? application.getProgram() : null);
     }
 }

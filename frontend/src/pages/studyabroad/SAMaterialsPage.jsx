@@ -5,53 +5,90 @@ import Footer from '../../components/Footer.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { studyAbroadApi } from '../../lib/api.js'
 import {
+  getApplicationItems,
   getMaterialItems,
   saveMaterialItems,
 } from './studyAbroadStorage.js'
 import '../../App.css'
 
-const countries = ['全部国家', '通用', '英国', '美国', '澳洲', '加拿大', '新加坡']
-const stages = ['全部阶段', '身份材料', '学术材料', '语言考试', '文书材料', '网申材料', '签证准备']
+const countries = ['All countries', 'General', 'UK', 'US', 'Australia', 'Canada', 'Singapore']
+const stages = ['All stages', 'Identity', 'Academic', 'Language test', 'Documents', 'Submission', 'Visa']
+
+const emptyForm = {
+  applicationId: '',
+  title: '',
+  country: 'General',
+  stage: 'Documents',
+  category: 'Writing',
+  deadline: '2026-08-01',
+  note: '',
+}
 
 function createId() {
   return `material-${Date.now()}`
 }
 
+function appLabel(app) {
+  return `${app.school} · ${app.program}`
+}
+
+function findApplication(applications, id) {
+  return applications.find((item) => String(item.id) === String(id))
+}
+
+function normalizeApplicationId(value, canUseRemote) {
+  if (!value) return null
+  return canUseRemote ? Number(value) : value
+}
+
+function toMaterialPayload(item, canUseRemote) {
+  return {
+    applicationId: normalizeApplicationId(item.applicationId, canUseRemote),
+    title: item.title,
+    country: item.country,
+    stage: item.stage,
+    category: item.category,
+    deadline: item.deadline,
+    completed: item.completed,
+    note: item.note,
+  }
+}
+
 export default function SAMaterialsPage() {
   const { token } = useAuth()
   const [items, setItems] = useState(() => getMaterialItems())
-  const [filters, setFilters] = useState({ country: '全部国家', stage: '全部阶段', keyword: '' })
+  const [applications, setApplications] = useState(() => getApplicationItems())
+  const [filters, setFilters] = useState({ country: 'All countries', stage: 'All stages', keyword: '' })
   const [syncNote, setSyncNote] = useState('')
-  const [form, setForm] = useState({
-    title: '',
-    country: '通用',
-    stage: '文书材料',
-    category: '文书模板',
-    deadline: '2026-08-01',
-    note: '',
-  })
+  const [form, setForm] = useState(emptyForm)
 
   const canUseRemote = Boolean(token && token !== 'dev-token')
 
   useEffect(() => {
-    if (!canUseRemote) return undefined
+    if (!canUseRemote) {
+      return undefined
+    }
     let active = true
 
-    async function loadRemoteMaterials() {
+    async function loadRemoteData() {
       try {
-        const remoteItems = await studyAbroadApi.materials(token)
+        const [remoteApplications, remoteItems] = await Promise.all([
+          studyAbroadApi.applications(token),
+          studyAbroadApi.materials(token),
+        ])
         if (active) {
+          setApplications(remoteApplications)
           setItems(remoteItems)
-          setSyncNote('当前使用后端数据库保存材料清单。')
+          setSyncNote('Loaded materials and application projects from backend.')
         }
-      } catch {
+      } catch (error) {
         if (active) {
-          setSyncNote('后端暂不可用，当前使用本地演示材料。')
+          setSyncNote(error.message || 'Backend unavailable. Showing local demo materials.')
         }
       }
     }
 
-    loadRemoteMaterials()
+    loadRemoteData()
     return () => {
       active = false
     }
@@ -65,9 +102,9 @@ export default function SAMaterialsPage() {
   const filteredItems = useMemo(() => {
     const keyword = filters.keyword.trim().toLowerCase()
     return items.filter((item) => {
-      const matchCountry = filters.country === '全部国家' || item.country === filters.country
-      const matchStage = filters.stage === '全部阶段' || item.stage === filters.stage
-      const text = `${item.title} ${item.category} ${item.note}`.toLowerCase()
+      const matchCountry = filters.country === 'All countries' || item.country === filters.country
+      const matchStage = filters.stage === 'All stages' || item.stage === filters.stage
+      const text = `${item.title} ${item.category} ${item.note} ${item.applicationSchool || ''}`.toLowerCase()
       const matchKeyword = !keyword || text.includes(keyword)
       return matchCountry && matchStage && matchKeyword
     })
@@ -79,34 +116,44 @@ export default function SAMaterialsPage() {
     return { completed, rate }
   }, [items])
 
+  function enrichWithApplication(payload) {
+    const app = findApplication(applications, payload.applicationId)
+    return {
+      ...payload,
+      applicationSchool: app?.school || null,
+      applicationProgram: app?.program || null,
+    }
+  }
+
   async function addItem(event) {
     event.preventDefault()
     const title = form.title.trim()
     if (!title) return
 
     const payload = {
+      applicationId: normalizeApplicationId(form.applicationId, canUseRemote),
       title,
       country: form.country,
       stage: form.stage,
-      category: form.category.trim() || '其他材料',
+      category: form.category.trim() || 'Other',
       deadline: form.deadline,
       completed: false,
-      note: form.note.trim() || '暂无备注',
+      note: form.note.trim() || 'No note',
     }
 
     if (canUseRemote) {
       try {
         const created = await studyAbroadApi.createMaterial(payload, token)
         setItems([...items, created].sort((a, b) => a.deadline.localeCompare(b.deadline)))
-        setSyncNote('材料已保存到后端数据库。')
+        setSyncNote('Material item saved to backend.')
       } catch (error) {
-        setSyncNote(error.message || '后端保存失败，请稍后再试。')
+        setSyncNote(error.message || 'Backend save failed.')
         return
       }
     } else {
-      updateLocalItems([...items, { id: createId(), ...payload }])
+      updateLocalItems([...items, { id: createId(), ...enrichWithApplication(payload) }])
     }
-    setForm({ ...form, title: '', note: '' })
+    setForm({ ...emptyForm, applicationId: form.applicationId })
   }
 
   async function toggleCompleted(targetId) {
@@ -116,18 +163,16 @@ export default function SAMaterialsPage() {
 
     if (canUseRemote) {
       try {
-        const updated = await studyAbroadApi.updateMaterial(targetId, nextItem, token)
+        const updated = await studyAbroadApi.updateMaterial(targetId, toMaterialPayload(nextItem, canUseRemote), token)
         setItems(items.map((item) => (item.id === targetId ? updated : item)))
-        setSyncNote('材料状态已同步到后端。')
+        setSyncNote('Material status synced to backend.')
       } catch (error) {
-        setSyncNote(error.message || '材料状态同步失败，请稍后再试。')
+        setSyncNote(error.message || 'Material status sync failed.')
       }
       return
     }
 
-    updateLocalItems(items.map((item) => (
-      item.id === targetId ? nextItem : item
-    )))
+    updateLocalItems(items.map((item) => (item.id === targetId ? nextItem : item)))
   }
 
   async function removeItem(targetId) {
@@ -135,9 +180,9 @@ export default function SAMaterialsPage() {
       try {
         await studyAbroadApi.deleteMaterial(targetId, token)
         setItems(items.filter((item) => item.id !== targetId))
-        setSyncNote('材料已从后端删除。')
+        setSyncNote('Material item deleted from backend.')
       } catch (error) {
-        setSyncNote(error.message || '删除失败，请稍后再试。')
+        setSyncNote(error.message || 'Delete failed.')
       }
       return
     }
@@ -151,43 +196,49 @@ export default function SAMaterialsPage() {
         <section className="section">
           <div className="detail-header">
             <div>
-              <p className="eyebrow">留学 · 资源共享</p>
-              <h2>申请材料清单</h2>
-              <p className="muted">按国家和阶段核对材料，适合展示留学申请过程管理能力。</p>
+              <p className="eyebrow">Study Abroad · Materials</p>
+              <h2>Application Material Checklist</h2>
+              <p className="muted">Track materials by country, stage, and linked application project.</p>
             </div>
-            <Link className="btn ghost" to="/studyabroad">返回面板</Link>
+            <Link className="btn ghost" to="/studyabroad">Back to dashboard</Link>
           </div>
 
           <div className="grid-two">
             <form className="feature-card" onSubmit={addItem}>
-              <div className="card-title">新增材料</div>
+              <div className="card-title">New Material</div>
               <label className="field">
-                <span>材料名称</span>
+                <span>Application Project</span>
+                <select
+                  value={form.applicationId}
+                  onChange={(event) => setForm({ ...form, applicationId: event.target.value })}
+                >
+                  <option value="">General / not linked</option>
+                  {applications.map((item) => (
+                    <option key={item.id} value={String(item.id)}>{appLabel(item)}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>Material Name</span>
                 <input
                   type="text"
                   value={form.title}
-                  placeholder="例如：推荐信第二封"
+                  placeholder="Example: Second recommendation letter"
                   onChange={(event) => setForm({ ...form, title: event.target.value })}
                 />
               </label>
               <div className="grid-two compact">
                 <label className="field">
-                  <span>国家/地区</span>
-                  <select
-                    value={form.country}
-                    onChange={(event) => setForm({ ...form, country: event.target.value })}
-                  >
+                  <span>Country / Region</span>
+                  <select value={form.country} onChange={(event) => setForm({ ...form, country: event.target.value })}>
                     {countries.slice(1).map((item) => (
                       <option key={item} value={item}>{item}</option>
                     ))}
                   </select>
                 </label>
                 <label className="field">
-                  <span>申请阶段</span>
-                  <select
-                    value={form.stage}
-                    onChange={(event) => setForm({ ...form, stage: event.target.value })}
-                  >
+                  <span>Stage</span>
+                  <select value={form.stage} onChange={(event) => setForm({ ...form, stage: event.target.value })}>
                     {stages.slice(1).map((item) => (
                       <option key={item} value={item}>{item}</option>
                     ))}
@@ -196,7 +247,7 @@ export default function SAMaterialsPage() {
               </div>
               <div className="grid-two compact">
                 <label className="field">
-                  <span>材料类型</span>
+                  <span>Category</span>
                   <input
                     type="text"
                     value={form.category}
@@ -204,7 +255,7 @@ export default function SAMaterialsPage() {
                   />
                 </label>
                 <label className="field">
-                  <span>目标日期</span>
+                  <span>Deadline</span>
                   <input
                     type="date"
                     value={form.deadline}
@@ -213,41 +264,41 @@ export default function SAMaterialsPage() {
                 </label>
               </div>
               <label className="field">
-                <span>备注</span>
+                <span>Note</span>
                 <textarea
                   rows="3"
                   value={form.note}
-                  placeholder="记录格式要求、盖章要求或负责人"
+                  placeholder="Record format, stamp, owner, or submission notes"
                   onChange={(event) => setForm({ ...form, note: event.target.value })}
                 />
               </label>
-              <button className="btn primary" type="submit">加入清单</button>
+              <button className="btn primary" type="submit">Add Material</button>
             </form>
 
             <div className="feature-card metrics">
-              <div className="card-title">材料进度</div>
+              <div className="card-title">Material Progress</div>
               <div className="mini-grid">
                 <div className="mini-card">
                   <div className="mini-value">{items.length}</div>
-                  <div className="mini-label">总材料</div>
+                  <div className="mini-label">Total</div>
                 </div>
                 <div className="mini-card">
                   <div className="mini-value">{stats.completed}</div>
-                  <div className="mini-label">已完成</div>
+                  <div className="mini-label">Done</div>
                 </div>
                 <div className="mini-card">
                   <div className="mini-value">{stats.rate}%</div>
-                  <div className="mini-label">完成率</div>
+                  <div className="mini-label">Completion</div>
                 </div>
               </div>
               <div className="progress-block">
-                <div className="progress-label">材料完成率 {stats.rate}%</div>
+                <div className="progress-label">Completion {stats.rate}%</div>
                 <div className="progress-bar alt"><span style={{ width: `${stats.rate}%` }} /></div>
               </div>
               {syncNote ? <div className="notice-box"><p className="muted">{syncNote}</p></div> : null}
               <div className="filter-grid">
                 <label className="field">
-                  <span>国家筛选</span>
+                  <span>Country Filter</span>
                   <select
                     value={filters.country}
                     onChange={(event) => setFilters({ ...filters, country: event.target.value })}
@@ -258,7 +309,7 @@ export default function SAMaterialsPage() {
                   </select>
                 </label>
                 <label className="field">
-                  <span>阶段筛选</span>
+                  <span>Stage Filter</span>
                   <select
                     value={filters.stage}
                     onChange={(event) => setFilters({ ...filters, stage: event.target.value })}
@@ -270,11 +321,11 @@ export default function SAMaterialsPage() {
                 </label>
               </div>
               <label className="field">
-                <span>关键词</span>
+                <span>Keyword</span>
                 <input
                   type="text"
                   value={filters.keyword}
-                  placeholder="搜索材料名称、类型或备注"
+                  placeholder="Search material, category, project, or note"
                   onChange={(event) => setFilters({ ...filters, keyword: event.target.value })}
                 />
               </label>
@@ -290,7 +341,7 @@ export default function SAMaterialsPage() {
                     checked={item.completed}
                     onChange={() => toggleCompleted(item.id)}
                   />
-                  <span>{item.completed ? '已完成' : '待准备'}</span>
+                  <span>{item.completed ? 'Done' : 'Pending'}</span>
                 </label>
                 <div className="study-row-main">
                   <div className="study-row-title">{item.title}</div>
@@ -300,11 +351,17 @@ export default function SAMaterialsPage() {
                     <span>{item.category}</span>
                     <span>{item.deadline}</span>
                   </div>
+                  {item.applicationSchool ? (
+                    <div className="tag-row">
+                      <span className="tag subtle">{item.applicationSchool}</span>
+                      <span className="tag subtle">{item.applicationProgram}</span>
+                    </div>
+                  ) : null}
                   <p className="muted">{item.note}</p>
                 </div>
                 <div className="study-row-side">
                   <button className="btn outline small" type="button" onClick={() => removeItem(item.id)}>
-                    删除
+                    Delete
                   </button>
                 </div>
               </article>
