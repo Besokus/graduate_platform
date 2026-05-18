@@ -1,6 +1,7 @@
 const TIMELINE_KEY = 'gp_studyabroad_timeline'
 const MATERIALS_KEY = 'gp_studyabroad_materials'
 const APPLICATIONS_KEY = 'gp_studyabroad_applications'
+const EXPERIENCES_KEY = 'gp_studyabroad_experiences'
 
 export const defaultApplicationItems = [
   {
@@ -154,6 +155,53 @@ export const defaultMaterialItems = [
   },
 ]
 
+export const defaultExperienceItems = [
+  {
+    id: 'uk-ps',
+    title: 'How I shaped a UK taught master PS',
+    country: 'UK',
+    topic: 'Writing',
+    authorName: 'Senior Student A',
+    readTime: '6 min',
+    summary: 'Start from course fit, then connect projects and career goals instead of turning the PS into a resume.',
+    content: 'A strong PS should explain why this exact program fits your background. I first listed target modules, then matched each module with one project or internship experience.',
+    tags: ['PS', 'course fit', 'documents'],
+  },
+  {
+    id: 'us-shortlist',
+    title: 'Splitting US CS programs into dream, match, and safe tiers',
+    country: 'US',
+    topic: 'School Selection',
+    authorName: 'CS Applicant B',
+    readTime: '8 min',
+    summary: 'Use GPA, language score, research, internship, and admission preference to reduce blind applications.',
+    content: 'I built a spreadsheet with five columns: admission difficulty, course fit, tuition, location, and career outcome. The final list had two dream, four match, and two safe options.',
+    tags: ['school list', 'CS', 'positioning'],
+  },
+  {
+    id: 'au-visa',
+    title: 'Australian student visa material checklist',
+    country: 'Australia',
+    topic: 'Visa',
+    authorName: 'Southern Hemisphere Observer',
+    readTime: '5 min',
+    summary: 'Prepare passport, COE, financial proof, and medical examination early to avoid deadline pressure.',
+    content: 'The most useful thing was checking document validity before receiving the offer. Passport and financial proof both need enough buffer time.',
+    tags: ['visa', 'COE', 'financial proof'],
+  },
+  {
+    id: 'sg-language',
+    title: 'Language score planning for Singapore applications',
+    country: 'Singapore',
+    topic: 'Language Test',
+    authorName: 'NUS Application Log',
+    readTime: '4 min',
+    summary: 'Schedule language tests backward from application deadlines and reserve time for retake and score delivery.',
+    content: 'I treated the language score as a timeline item, not a side task. A second test slot was booked before the first score came out.',
+    tags: ['IELTS', 'TOEFL', 'timeline'],
+  },
+]
+
 function readJson(key, fallback) {
   try {
     const raw = localStorage.getItem(key)
@@ -191,7 +239,16 @@ export function saveMaterialItems(items) {
   writeJson(MATERIALS_KEY, items)
 }
 
+export function getExperienceItems() {
+  return readJson(EXPERIENCES_KEY, defaultExperienceItems)
+}
+
+export function saveExperienceItems(items) {
+  writeJson(EXPERIENCES_KEY, items)
+}
+
 export function resetStudyAbroadStorage() {
+  localStorage.removeItem(EXPERIENCES_KEY)
   localStorage.removeItem(APPLICATIONS_KEY)
   localStorage.removeItem(TIMELINE_KEY)
   localStorage.removeItem(MATERIALS_KEY)

@@ -229,6 +229,22 @@ export const userApi = {
 }
 
 export const studyAbroadApi = {
+  experiences(params = {}, token) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '' && value !== 'all') {
+        search.set(key, value)
+      }
+    })
+    const query = search.toString()
+    return request(`/api/studyabroad/experiences${query ? `?${query}` : ''}`, { token })
+  },
+  createExperience(payload, token) {
+    return request('/api/studyabroad/experiences', { method: 'POST', body: payload, token })
+  },
+  deleteExperience(id, token) {
+    return request(`/api/studyabroad/experiences/${id}`, { method: 'DELETE', token })
+  },
   applications(token) {
     return request('/api/studyabroad/applications', { token })
   },

@@ -4,12 +4,15 @@ import com.graduateplatform.common.entity.User;
 import com.graduateplatform.common.exception.BusinessException;
 import com.graduateplatform.common.repository.UserRepository;
 import com.graduateplatform.studyabroad.dto.ApplicationRequest;
+import com.graduateplatform.studyabroad.dto.ExperienceRequest;
 import com.graduateplatform.studyabroad.dto.MaterialRequest;
 import com.graduateplatform.studyabroad.dto.TimelineRequest;
 import com.graduateplatform.studyabroad.entity.StudyAbroadApplication;
+import com.graduateplatform.studyabroad.entity.StudyAbroadExperience;
 import com.graduateplatform.studyabroad.entity.StudyAbroadMaterial;
 import com.graduateplatform.studyabroad.entity.StudyAbroadTimeline;
 import com.graduateplatform.studyabroad.repository.StudyAbroadApplicationRepository;
+import com.graduateplatform.studyabroad.repository.StudyAbroadExperienceRepository;
 import com.graduateplatform.studyabroad.repository.StudyAbroadMaterialRepository;
 import com.graduateplatform.studyabroad.repository.StudyAbroadTimelineRepository;
 import org.springframework.stereotype.Service;
@@ -29,18 +32,58 @@ public class StudyAbroadService {
     private static final Set<String> VALID_PRIORITIES = Set.of("dream", "match", "safe");
 
     private final StudyAbroadApplicationRepository applicationRepository;
+    private final StudyAbroadExperienceRepository experienceRepository;
     private final StudyAbroadTimelineRepository timelineRepository;
     private final StudyAbroadMaterialRepository materialRepository;
     private final UserRepository userRepository;
 
     public StudyAbroadService(StudyAbroadApplicationRepository applicationRepository,
+                              StudyAbroadExperienceRepository experienceRepository,
                               StudyAbroadTimelineRepository timelineRepository,
                               StudyAbroadMaterialRepository materialRepository,
                               UserRepository userRepository) {
         this.applicationRepository = applicationRepository;
+        this.experienceRepository = experienceRepository;
         this.timelineRepository = timelineRepository;
         this.materialRepository = materialRepository;
         this.userRepository = userRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getExperiences(String country, String topic, String keyword) {
+        return experienceRepository.search(
+                normalizeFilter(country),
+                normalizeFilter(topic),
+                normalizeFilter(keyword)
+            )
+            .stream()
+            .map(this::toExperienceMap)
+            .toList();
+    }
+
+    @Transactional
+    public Map<String, Object> createExperience(Long userId, ExperienceRequest req) {
+        User user = ensureUser(userId);
+        StudyAbroadExperience item = StudyAbroadExperience.builder()
+            .author(user)
+            .title(req.getTitle().trim())
+            .country(req.getCountry().trim())
+            .topic(req.getTopic().trim())
+            .authorName(normalize(req.getAuthorName(), user.getName()))
+            .readTime(normalize(req.getReadTime(), "5 min"))
+            .summary(req.getSummary().trim())
+            .content(req.getContent().trim())
+            .tags(normalize(req.getTags(), ""))
+            .build();
+        return toExperienceMap(experienceRepository.save(item));
+    }
+
+    @Transactional
+    public void deleteExperience(Long userId, Long id) {
+        ensureUser(userId);
+        StudyAbroadExperience item = experienceRepository.findByIdAndAuthorId(id, userId)
+            .orElseThrow(() -> new BusinessException("Experience not found or access denied"));
+        experienceRepository.delete(item);
     }
 
     @Transactional(readOnly = true)
@@ -242,6 +285,39 @@ public class StudyAbroadService {
 
     private String normalize(String value, String fallback) {
         return value == null || value.isBlank() ? fallback : value.trim();
+    }
+
+    private String normalizeFilter(String value) {
+        return value == null || value.isBlank() || "all".equalsIgnoreCase(value.trim())
+            ? null
+            : value.trim();
+    }
+
+    private Map<String, Object> toExperienceMap(StudyAbroadExperience item) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", item.getId());
+        map.put("title", item.getTitle());
+        map.put("country", item.getCountry());
+        map.put("topic", item.getTopic());
+        map.put("authorName", item.getAuthorName());
+        map.put("readTime", item.getReadTime());
+        map.put("summary", item.getSummary());
+        map.put("content", item.getContent());
+        map.put("tags", splitTags(item.getTags()));
+        map.put("createdAt", item.getCreatedAt() != null ? item.getCreatedAt().toString() : null);
+        map.put("updatedAt", item.getUpdatedAt() != null ? item.getUpdatedAt().toString() : null);
+        return map;
+    }
+
+    private List<String> splitTags(String tags) {
+        if (tags == null || tags.isBlank()) {
+            return List.of();
+        }
+        return List.of(tags.split(","))
+            .stream()
+            .map(String::trim)
+            .filter(tag -> !tag.isBlank())
+            .toList();
     }
 
     private Map<String, Object> toApplicationMap(StudyAbroadApplication item) {

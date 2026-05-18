@@ -1,68 +1,145 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Navbar from '../../components/Navbar.jsx'
 import Footer from '../../components/Footer.jsx'
+import { useAuth } from '../../context/AuthContext.jsx'
+import { studyAbroadApi } from '../../lib/api.js'
+import {
+  getExperienceItems,
+  saveExperienceItems,
+} from './studyAbroadStorage.js'
 import '../../App.css'
 
-const countries = ['全部国家', '英国', '美国', '澳洲', '加拿大', '新加坡']
-const topics = ['全部主题', '选校策略', '申请经验', '语言备考', '文书写作', '签证攻略', '海外生活']
+const countries = ['all', 'UK', 'US', 'Australia', 'Canada', 'Singapore']
+const topics = ['all', 'School Selection', 'Application', 'Language Test', 'Writing', 'Visa', 'Life Abroad']
 
-const experiences = [
-  {
-    id: 'uk-ps',
-    title: '英国授课型硕士 PS 写作节奏',
-    country: '英国',
-    topic: '文书写作',
-    author: '留学学姐 A',
-    readTime: '6 分钟',
-    summary: '先确定课程匹配点，再把项目经历和职业目标连起来，避免把 PS 写成简历复述。',
-    tags: ['PS', '课程匹配', '申请材料'],
-  },
-  {
-    id: 'us-school',
-    title: '美国项目选校的冲刺/匹配/保底拆分',
-    country: '美国',
-    topic: '选校策略',
-    author: 'CS 申请者 B',
-    readTime: '8 分钟',
-    summary: '用 GPA、语言成绩、科研/实习经历和项目录取偏好做分层，减少盲投。',
-    tags: ['选校', 'CS', '定位'],
-  },
-  {
-    id: 'au-visa',
-    title: '澳洲学生签证材料准备清单',
-    country: '澳洲',
-    topic: '签证攻略',
-    author: '南半球观察员',
-    readTime: '5 分钟',
-    summary: '整理护照、COE、资金证明和体检节点，提前检查材料有效期。',
-    tags: ['签证', '资金证明', 'COE'],
-  },
-  {
-    id: 'sg-language',
-    title: '新加坡申请的语言成绩规划',
-    country: '新加坡',
-    topic: '语言备考',
-    author: 'NUS 申请记录',
-    readTime: '4 分钟',
-    summary: '把语言考试时间倒排到申请截止前，给二刷和送分预留缓冲。',
-    tags: ['雅思', '托福', '时间规划'],
-  },
-]
+const emptyForm = {
+  title: '',
+  country: 'UK',
+  topic: 'Application',
+  authorName: '',
+  readTime: '5 min',
+  summary: '',
+  content: '',
+  tags: '',
+}
+
+function createId() {
+  return `experience-${Date.now()}`
+}
+
+function normalizeTags(tags) {
+  if (Array.isArray(tags)) return tags
+  if (!tags) return []
+  return tags
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+}
 
 export default function ExperiencePage() {
-  const [filters, setFilters] = useState({ country: '全部国家', topic: '全部主题', keyword: '' })
+  const { token, user } = useAuth()
+  const [experiences, setExperiences] = useState(() => getExperienceItems())
+  const [filters, setFilters] = useState({ country: 'all', topic: 'all', keyword: '' })
+  const [form, setForm] = useState(emptyForm)
+  const [notice, setNotice] = useState('')
+
+  const canUseRemote = Boolean(token && token !== 'dev-token')
+
+  useEffect(() => {
+    if (!canUseRemote) return undefined
+    let active = true
+
+    async function loadExperiences() {
+      try {
+        const data = await studyAbroadApi.experiences(filters, token)
+        if (active) {
+          setExperiences(data)
+          setNotice('Loaded study abroad experiences from backend.')
+        }
+      } catch (error) {
+        if (active) {
+          setNotice(error.message || 'Backend unavailable. Showing local demo experiences.')
+        }
+      }
+    }
+
+    loadExperiences()
+    return () => {
+      active = false
+    }
+  }, [canUseRemote, filters, token])
 
   const filteredExperiences = useMemo(() => {
+    if (canUseRemote) return experiences
     const keyword = filters.keyword.trim().toLowerCase()
     return experiences.filter((item) => {
-      const matchCountry = filters.country === '全部国家' || item.country === filters.country
-      const matchTopic = filters.topic === '全部主题' || item.topic === filters.topic
-      const text = `${item.title} ${item.summary} ${item.tags.join(' ')}`.toLowerCase()
+      const matchCountry = filters.country === 'all' || item.country === filters.country
+      const matchTopic = filters.topic === 'all' || item.topic === filters.topic
+      const text = `${item.title} ${item.summary} ${normalizeTags(item.tags).join(' ')}`.toLowerCase()
       const matchKeyword = !keyword || text.includes(keyword)
       return matchCountry && matchTopic && matchKeyword
     })
-  }, [filters])
+  }, [canUseRemote, experiences, filters])
+
+  function saveLocal(nextItems) {
+    setExperiences(nextItems)
+    saveExperienceItems(nextItems)
+  }
+
+  function updateForm(field, value) {
+    setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    const payload = {
+      ...form,
+      title: form.title.trim(),
+      authorName: form.authorName.trim() || user?.name || 'Study Abroad Student',
+      summary: form.summary.trim(),
+      content: form.content.trim(),
+      tags: form.tags.trim(),
+    }
+    if (!payload.title || !payload.summary || !payload.content) {
+      setNotice('Title, summary, and content are required.')
+      return
+    }
+
+    try {
+      if (canUseRemote) {
+        const created = await studyAbroadApi.createExperience(payload, token)
+        setExperiences((current) => [created, ...current])
+        setNotice('Experience saved to backend.')
+      } else {
+        const created = {
+          ...payload,
+          id: createId(),
+          tags: normalizeTags(payload.tags),
+        }
+        saveLocal([created, ...experiences])
+        setNotice('Local experience created.')
+      }
+      setForm(emptyForm)
+    } catch (error) {
+      setNotice(error.message || 'Save failed.')
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!window.confirm('Delete this experience?')) return
+    try {
+      if (canUseRemote) {
+        await studyAbroadApi.deleteExperience(id, token)
+        setExperiences((current) => current.filter((item) => item.id !== id))
+      } else {
+        saveLocal(experiences.filter((item) => item.id !== id))
+      }
+      setNotice('Experience deleted.')
+    } catch (error) {
+      setNotice(error.message || 'Delete failed.')
+    }
+  }
 
   return (
     <div className="app">
@@ -71,44 +148,44 @@ export default function ExperiencePage() {
         <section className="section">
           <div className="detail-header">
             <div>
-              <p className="eyebrow">留学 · 经验交流</p>
-              <h2>留学经验筛选</h2>
-              <p className="muted">按国家、主题和关键词查看经验卡片，后续可与社区留学分类打通。</p>
+              <p className="eyebrow">Study Abroad · Experience</p>
+              <h2>Experience Library</h2>
+              <p className="muted">Search, filter, and publish study abroad application experience notes.</p>
             </div>
-            <Link className="btn ghost" to="/studyabroad">返回面板</Link>
+            <Link className="btn ghost" to="/studyabroad">Back to dashboard</Link>
           </div>
 
           <div className="feature-card">
             <div className="filter-grid">
               <label className="field">
-                <span>国家/地区</span>
+                <span>Country / Region</span>
                 <select
                   value={filters.country}
                   onChange={(event) => setFilters({ ...filters, country: event.target.value })}
                 >
                   {countries.map((item) => (
-                    <option key={item} value={item}>{item}</option>
+                    <option key={item} value={item}>{item === 'all' ? 'All countries' : item}</option>
                   ))}
                 </select>
               </label>
               <label className="field">
-                <span>主题</span>
+                <span>Topic</span>
                 <select
                   value={filters.topic}
                   onChange={(event) => setFilters({ ...filters, topic: event.target.value })}
                 >
                   {topics.map((item) => (
-                    <option key={item} value={item}>{item}</option>
+                    <option key={item} value={item}>{item === 'all' ? 'All topics' : item}</option>
                   ))}
                 </select>
               </label>
             </div>
             <label className="field">
-              <span>关键词</span>
+              <span>Keyword</span>
               <input
                 type="text"
                 value={filters.keyword}
-                placeholder="搜索 PS、签证、语言、选校等关键词"
+                placeholder="Search PS, visa, IELTS, school list, or life abroad"
                 onChange={(event) => setFilters({ ...filters, keyword: event.target.value })}
               />
             </label>
@@ -126,6 +203,71 @@ export default function ExperiencePage() {
             </div>
           </div>
 
+          <form className="feature-card" onSubmit={handleSubmit}>
+            <div className="section-head compact">
+              <h2>Publish Experience</h2>
+              <span className="tag subtle">{canUseRemote ? 'Backend save' : 'Local demo save'}</span>
+            </div>
+            <div className="filter-grid">
+              <label className="field">
+                <span>Title</span>
+                <input value={form.title} onChange={(event) => updateForm('title', event.target.value)} />
+              </label>
+              <label className="field">
+                <span>Author Name</span>
+                <input
+                  value={form.authorName}
+                  placeholder={user?.name || 'Study Abroad Student'}
+                  onChange={(event) => updateForm('authorName', event.target.value)}
+                />
+              </label>
+              <label className="field">
+                <span>Country / Region</span>
+                <select value={form.country} onChange={(event) => updateForm('country', event.target.value)}>
+                  {countries.slice(1).map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>Topic</span>
+                <select value={form.topic} onChange={(event) => updateForm('topic', event.target.value)}>
+                  {topics.slice(1).map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>Read Time</span>
+                <input value={form.readTime} onChange={(event) => updateForm('readTime', event.target.value)} />
+              </label>
+              <label className="field">
+                <span>Tags</span>
+                <input
+                  value={form.tags}
+                  placeholder="PS, visa, IELTS"
+                  onChange={(event) => updateForm('tags', event.target.value)}
+                />
+              </label>
+            </div>
+            <label className="field">
+              <span>Summary</span>
+              <textarea rows="2" value={form.summary} onChange={(event) => updateForm('summary', event.target.value)} />
+            </label>
+            <label className="field">
+              <span>Content</span>
+              <textarea rows="4" value={form.content} onChange={(event) => updateForm('content', event.target.value)} />
+            </label>
+            <button className="btn primary" type="submit">Publish Experience</button>
+          </form>
+
+          {notice ? (
+            <div className="notice-box">
+              <strong>Data source</strong>
+              <p className="muted">{notice}</p>
+            </div>
+          ) : null}
+
           <div className="track-grid">
             {filteredExperiences.map((item) => (
               <article className="track-card experience-card" key={item.id}>
@@ -135,25 +277,29 @@ export default function ExperiencePage() {
                 </div>
                 <div className="detail-meta">
                   <span>{item.topic}</span>
-                  <span>{item.author}</span>
+                  <span>{item.authorName}</span>
                   <span>{item.readTime}</span>
                 </div>
                 <p className="muted">{item.summary}</p>
+                {item.content ? <p className="muted">{item.content}</p> : null}
                 <div className="tag-row">
-                  {item.tags.map((tag) => (
+                  {normalizeTags(item.tags).map((tag) => (
                     <span className="tag subtle" key={tag}>{tag}</span>
                   ))}
                 </div>
+                <button className="btn outline small" type="button" onClick={() => handleDelete(item.id)}>
+                  Delete
+                </button>
               </article>
             ))}
           </div>
 
           <div className="cta study-cta">
             <div>
-              <h2>想发布自己的申请经验？</h2>
-              <p className="muted">进入社区并选择“留学”分类，就能把经验沉淀到公共交流区。</p>
+              <h2>Want broader discussion?</h2>
+              <p className="muted">Use the community study abroad category for longer public discussion posts.</p>
             </div>
-            <Link className="btn primary" to="/community?category=liuxue">进入留学社区</Link>
+            <Link className="btn primary" to="/community?category=liuxue">Open Community</Link>
           </div>
         </section>
       </main>

@@ -2,6 +2,7 @@ package com.graduateplatform.studyabroad.controller;
 
 import com.graduateplatform.common.dto.ApiResponse;
 import com.graduateplatform.studyabroad.dto.ApplicationRequest;
+import com.graduateplatform.studyabroad.dto.ExperienceRequest;
 import com.graduateplatform.studyabroad.dto.MaterialRequest;
 import com.graduateplatform.studyabroad.dto.TimelineRequest;
 import com.graduateplatform.studyabroad.service.StudyAbroadService;
@@ -17,6 +18,27 @@ public class StudyAbroadController {
 
     public StudyAbroadController(StudyAbroadService studyAbroadService) {
         this.studyAbroadService = studyAbroadService;
+    }
+
+    @GetMapping("/experiences")
+    public ApiResponse<?> experiences(@RequestParam(required = false) String country,
+                                      @RequestParam(required = false) String topic,
+                                      @RequestParam(required = false) String keyword) {
+        return ApiResponse.ok(studyAbroadService.getExperiences(country, topic, keyword));
+    }
+
+    @PostMapping("/experiences")
+    public ApiResponse<?> createExperience(@Valid @RequestBody ExperienceRequest req, Authentication auth) {
+        return ApiResponse.ok(
+            studyAbroadService.createExperience(getCurrentUserId(auth), req),
+            "Experience created"
+        );
+    }
+
+    @DeleteMapping("/experiences/{id}")
+    public ApiResponse<?> deleteExperience(@PathVariable Long id, Authentication auth) {
+        studyAbroadService.deleteExperience(getCurrentUserId(auth), id);
+        return ApiResponse.ok(null, "Experience deleted");
     }
 
     @GetMapping("/applications")
