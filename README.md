@@ -206,3 +206,19 @@ npm run dev
 ### Employment v1 non-goals
 
 Employment v1 intentionally does not include Word/PDF resume export, external recruitment-platform API sync, email/SMS/WeChat push, or AI/model-based recommendations. Notifications are station-internal records matched by saved preferences.
+
+### Employment demo flow
+
+For course or graduation-project acceptance, the recommended employment demo path is:
+
+1. Admin opens `/admin/employment`, creates or edits a job posting/career fair, and uses the active status to show or hide it from user pages.
+2. Admin triggers a matched station notification from a managed job or fair.
+3. A job-track user opens `/job/fairs` to browse fairs and enter a fair detail page.
+4. The same user opens `/job/recommend`, reviews rule-based match reasons, enters a job detail page, and adds the job to application tracking.
+5. The user opens `/job/applications`, verifies that the company/job fields are prefilled, saves the application, and updates the status through the tracking board.
+
+Current matching notes:
+
+- Station notifications match saved preferences by city, industry, and role.
+- Job recommendations score city, industry, role, user major, and resume skills/projects.
+- Salary range and company type are stored as preference/job information for display and explanation, but they are not part of the current v1 score.

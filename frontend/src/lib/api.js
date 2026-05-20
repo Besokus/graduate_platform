@@ -161,8 +161,14 @@ export const employmentApi = {
   fairs(params = {}) {
     return request(appendParams('/api/job/fairs', params))
   },
+  fairDetail(id) {
+    return request(`/api/job/fairs/${id}`)
+  },
   postings(params = {}) {
     return request(appendParams('/api/job/postings', params))
+  },
+  postingDetail(id) {
+    return request(`/api/job/postings/${id}`)
   },
   preference(token) {
     return request('/api/job/preferences', { token })

@@ -34,8 +34,10 @@ import MockInterviewPage from './pages/kaogong/MockInterviewPage.jsx'
 // 就业方向专属页面
 import JobPage from './pages/job/JobPage.jsx'
 import CareerFairPage from './pages/job/CareerFairPage.jsx'
+import CareerFairDetailPage from './pages/job/CareerFairDetailPage.jsx'
 import ResumePage from './pages/job/ResumePage.jsx'
 import JobRecommendPage from './pages/job/JobRecommendPage.jsx'
+import JobPostingDetailPage from './pages/job/JobPostingDetailPage.jsx'
 import ApplicationTrackingPage from './pages/job/ApplicationTrackingPage.jsx'
 
 // 留学方向专属页面
@@ -93,8 +95,10 @@ export default function App() {
       {/* 就业方向专属 */}
       <Route path="/job" element={<JobPage />} />
       <Route path="/job/fairs" element={<CareerFairPage />} />
+      <Route path="/job/fairs/:id" element={<CareerFairDetailPage />} />
       <Route path="/job/resume" element={<ResumePage />} />
       <Route path="/job/recommend" element={<JobRecommendPage />} />
+      <Route path="/job/postings/:id" element={<JobPostingDetailPage />} />
       <Route path="/job/applications" element={<ApplicationTrackingPage />} />
 
       {/* 留学方向专属 */}
