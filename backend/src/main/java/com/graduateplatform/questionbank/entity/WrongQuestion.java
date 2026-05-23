@@ -52,6 +52,9 @@ public class WrongQuestion {
 
     private String snapshotQuestionType;
 
+    @Version
+    private Long version; // 乐观锁，防止并发重复记录
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

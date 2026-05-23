@@ -15,6 +15,8 @@ import com.graduateplatform.questionbank.repository.PracticeSessionRepository;
 import com.graduateplatform.questionbank.repository.QuestionBankRepository;
 import com.graduateplatform.questionbank.repository.QuestionRepository;
 import com.graduateplatform.questionbank.repository.WrongQuestionRepository;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -160,6 +162,18 @@ public class PracticeService {
 
     @Transactional
     public Map<String, Object> submitSession(Long userId, Long sessionId) {
+        try {
+            return doSubmitSession(userId, sessionId);
+        } catch (ObjectOptimisticLockingFailureException e) {
+            // 乐观锁冲突（子类）：重试一次
+            return doSubmitSession(userId, sessionId);
+        } catch (OptimisticLockingFailureException e) {
+            // 乐观锁冲突（父类）：重试一次
+            return doSubmitSession(userId, sessionId);
+        }
+    }
+
+    private Map<String, Object> doSubmitSession(Long userId, Long sessionId) {
         PracticeSession session = loadOwnedSession(userId, sessionId);
         if ("submitted".equals(session.getStatus())) {
             return toResultMap(session);
@@ -178,7 +192,7 @@ public class PracticeService {
                 answeredCount++;
             }
 
-            if (isSubjective(question)) {
+            if (question != null && isSubjective(question)) {
                 subjectiveCount++;
                 answer.setCorrect(null);
                 answer.setReviewStatus("saved_only");
@@ -186,7 +200,7 @@ public class PracticeService {
             }
 
             objectiveCount++;
-            String questionAnswer = answer.getSnapshotAnswer() != null ? answer.getSnapshotAnswer() : question.getAnswer();
+            String questionAnswer = answer.getSnapshotAnswer() != null ? answer.getSnapshotAnswer() : (question != null ? question.getAnswer() : "");
             boolean correct = normalizeAnswer(questionAnswer).equals(normalizeAnswer(answer.getAnswer()));
             answer.setCorrect(correct);
             answer.setReviewStatus("auto_scored");
@@ -194,8 +208,10 @@ public class PracticeService {
                 correctCount++;
             } else {
                 wrongCount++;
-                upsertWrongQuestion(session.getUser(), question, answer.getAnswer());
-                wrongQuestions.add(toWrongQuestionMap(question, answer.getAnswer()));
+                if (question != null) {
+                    upsertWrongQuestion(session.getUser(), question, answer.getAnswer());
+                    wrongQuestions.add(toWrongQuestionMap(question, answer.getAnswer()));
+                }
             }
         }
 
@@ -336,6 +352,7 @@ public class PracticeService {
                 map.put("bankId", session.getBank() != null ? session.getBank().getId() : null);
                 map.put("bankName", session.getBank() != null ? session.getBank().getName() : null);
                 map.put("mode", session.getMode());
+                map.put("status", session.getStatus());
                 map.put("totalCount", session.getTotalCount());
                 map.put("correctCount", session.getCorrectCount());
                 map.put("wrongCount", session.getWrongCount());
@@ -369,7 +386,9 @@ public class PracticeService {
     }
 
     private void upsertWrongQuestion(User user, Question question, String answer) {
-        WrongQuestion wrongQuestion = wrongQuestionRepository.findByUserIdAndQuestionId(user.getId(), question.getId())
+        // 使用悲观写锁防止并发创建竞态
+        WrongQuestion wrongQuestion = wrongQuestionRepository
+            .findByUserIdAndQuestionIdWithLock(user.getId(), question.getId())
             .orElseGet(() -> WrongQuestion.builder()
                 .user(user)
                 .question(question)

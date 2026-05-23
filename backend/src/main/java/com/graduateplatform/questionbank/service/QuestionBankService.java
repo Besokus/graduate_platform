@@ -43,7 +43,7 @@ public class QuestionBankService {
     }
 
     @Transactional(readOnly = true)
-    @Cacheable("questionBank:options")
+    @Cacheable(value = "questionBank:options", sync = true)
     public Map<String, Object> getOptions() {
         Map<String, Object> options = new LinkedHashMap<>();
         options.put("targets", repository.findDistinctTargets());

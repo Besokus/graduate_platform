@@ -71,6 +71,9 @@ public class PracticeSession {
     @Column(columnDefinition = "TEXT")
     private String sourceRuleJson; // 创建规则，如随机题量、章节集合、模拟卷来源
 
+    @Version
+    private Long version; // 乐观锁，防止并发提交
+
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("orderNo ASC")
     @Builder.Default
