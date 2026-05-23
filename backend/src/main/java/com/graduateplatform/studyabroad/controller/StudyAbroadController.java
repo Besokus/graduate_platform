@@ -1,6 +1,8 @@
 package com.graduateplatform.studyabroad.controller;
 
 import com.graduateplatform.common.dto.ApiResponse;
+import com.graduateplatform.studyabroad.dto.ApplicationRequest;
+import com.graduateplatform.studyabroad.dto.ExperienceRequest;
 import com.graduateplatform.studyabroad.dto.MaterialRequest;
 import com.graduateplatform.studyabroad.dto.TimelineRequest;
 import com.graduateplatform.studyabroad.service.StudyAbroadService;
@@ -18,6 +20,56 @@ public class StudyAbroadController {
         this.studyAbroadService = studyAbroadService;
     }
 
+    @GetMapping("/experiences")
+    public ApiResponse<?> experiences(@RequestParam(required = false) String country,
+                                      @RequestParam(required = false) String topic,
+                                      @RequestParam(required = false) String keyword) {
+        return ApiResponse.ok(studyAbroadService.getExperiences(country, topic, keyword));
+    }
+
+    @PostMapping("/experiences")
+    public ApiResponse<?> createExperience(@Valid @RequestBody ExperienceRequest req, Authentication auth) {
+        return ApiResponse.ok(
+            studyAbroadService.createExperience(getCurrentUserId(auth), req),
+            "Experience created"
+        );
+    }
+
+    @DeleteMapping("/experiences/{id}")
+    public ApiResponse<?> deleteExperience(@PathVariable Long id, Authentication auth) {
+        studyAbroadService.deleteExperience(getCurrentUserId(auth), id);
+        return ApiResponse.ok(null, "Experience deleted");
+    }
+
+    @GetMapping("/applications")
+    public ApiResponse<?> applications(Authentication auth) {
+        return ApiResponse.ok(studyAbroadService.getApplications(getCurrentUserId(auth)));
+    }
+
+    @PostMapping("/applications")
+    public ApiResponse<?> createApplication(@Valid @RequestBody ApplicationRequest req, Authentication auth) {
+        return ApiResponse.ok(
+            studyAbroadService.createApplication(getCurrentUserId(auth), req),
+            "Application created"
+        );
+    }
+
+    @PutMapping("/applications/{id}")
+    public ApiResponse<?> updateApplication(@PathVariable Long id,
+                                            @Valid @RequestBody ApplicationRequest req,
+                                            Authentication auth) {
+        return ApiResponse.ok(
+            studyAbroadService.updateApplication(getCurrentUserId(auth), id, req),
+            "Application updated"
+        );
+    }
+
+    @DeleteMapping("/applications/{id}")
+    public ApiResponse<?> deleteApplication(@PathVariable Long id, Authentication auth) {
+        studyAbroadService.deleteApplication(getCurrentUserId(auth), id);
+        return ApiResponse.ok(null, "Application deleted");
+    }
+
     @GetMapping("/timeline")
     public ApiResponse<?> timeline(Authentication auth) {
         return ApiResponse.ok(studyAbroadService.getTimeline(getCurrentUserId(auth)));
@@ -27,7 +79,7 @@ public class StudyAbroadController {
     public ApiResponse<?> createTimeline(@Valid @RequestBody TimelineRequest req, Authentication auth) {
         return ApiResponse.ok(
             studyAbroadService.createTimeline(getCurrentUserId(auth), req),
-            "时间线节点已创建"
+            "Timeline item created"
         );
     }
 
@@ -37,14 +89,14 @@ public class StudyAbroadController {
                                          Authentication auth) {
         return ApiResponse.ok(
             studyAbroadService.updateTimeline(getCurrentUserId(auth), id, req),
-            "时间线节点已更新"
+            "Timeline item updated"
         );
     }
 
     @DeleteMapping("/timeline/{id}")
     public ApiResponse<?> deleteTimeline(@PathVariable Long id, Authentication auth) {
         studyAbroadService.deleteTimeline(getCurrentUserId(auth), id);
-        return ApiResponse.ok(null, "时间线节点已删除");
+        return ApiResponse.ok(null, "Timeline item deleted");
     }
 
     @GetMapping("/materials")
@@ -56,7 +108,7 @@ public class StudyAbroadController {
     public ApiResponse<?> createMaterial(@Valid @RequestBody MaterialRequest req, Authentication auth) {
         return ApiResponse.ok(
             studyAbroadService.createMaterial(getCurrentUserId(auth), req),
-            "申请材料已创建"
+            "Material item created"
         );
     }
 
@@ -66,14 +118,14 @@ public class StudyAbroadController {
                                          Authentication auth) {
         return ApiResponse.ok(
             studyAbroadService.updateMaterial(getCurrentUserId(auth), id, req),
-            "申请材料已更新"
+            "Material item updated"
         );
     }
 
     @DeleteMapping("/materials/{id}")
     public ApiResponse<?> deleteMaterial(@PathVariable Long id, Authentication auth) {
         studyAbroadService.deleteMaterial(getCurrentUserId(auth), id);
-        return ApiResponse.ok(null, "申请材料已删除");
+        return ApiResponse.ok(null, "Material item deleted");
     }
 
     private Long getCurrentUserId(Authentication auth) {

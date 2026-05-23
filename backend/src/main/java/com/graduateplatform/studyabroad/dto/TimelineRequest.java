@@ -9,6 +9,8 @@ import java.time.LocalDate;
 
 @Data
 public class TimelineRequest {
+    private Long applicationId;
+
     @NotBlank
     @Size(max = 80)
     private String title;

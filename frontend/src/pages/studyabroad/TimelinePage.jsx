@@ -5,18 +5,29 @@ import Footer from '../../components/Footer.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { studyAbroadApi } from '../../lib/api.js'
 import {
+  getApplicationItems,
   getTimelineItems,
   saveTimelineItems,
 } from './studyAbroadStorage.js'
 import '../../App.css'
 
 const statusLabels = {
-  todo: '待开始',
-  doing: '进行中',
-  done: '已完成',
+  todo: 'Todo',
+  doing: 'Doing',
+  done: 'Done',
 }
 
-const phases = ['全部阶段', '语言考试', '选校定位', '文书材料', '网申提交', '面试准备', '签证准备']
+const phases = ['All phases', 'Language test', 'School selection', 'Documents', 'Submission', 'Interview', 'Visa']
+
+const emptyForm = {
+  applicationId: '',
+  title: '',
+  country: 'UK',
+  school: '',
+  phase: 'Documents',
+  dueDate: '2026-09-01',
+  note: '',
+}
 
 function daysLeft(dateText) {
   const today = new Date()
@@ -29,41 +40,67 @@ function createId() {
   return `timeline-${Date.now()}`
 }
 
+function appLabel(app) {
+  return `${app.school} · ${app.program}`
+}
+
+function findApplication(applications, id) {
+  return applications.find((item) => String(item.id) === String(id))
+}
+
+function normalizeApplicationId(value, canUseRemote) {
+  if (!value) return null
+  return canUseRemote ? Number(value) : value
+}
+
+function toTimelinePayload(item, canUseRemote) {
+  return {
+    applicationId: normalizeApplicationId(item.applicationId, canUseRemote),
+    title: item.title,
+    country: item.country,
+    school: item.school,
+    phase: item.phase,
+    dueDate: item.dueDate,
+    status: item.status,
+    note: item.note,
+  }
+}
+
 export default function TimelinePage() {
   const { token } = useAuth()
   const [items, setItems] = useState(() => getTimelineItems())
-  const [phase, setPhase] = useState('全部阶段')
+  const [applications, setApplications] = useState(() => getApplicationItems())
+  const [phase, setPhase] = useState('All phases')
   const [syncNote, setSyncNote] = useState('')
-  const [form, setForm] = useState({
-    title: '',
-    country: '英国',
-    school: '',
-    phase: '文书材料',
-    dueDate: '2026-09-01',
-    note: '',
-  })
+  const [form, setForm] = useState(emptyForm)
 
   const canUseRemote = Boolean(token && token !== 'dev-token')
 
   useEffect(() => {
-    if (!canUseRemote) return undefined
+    if (!canUseRemote) {
+      return undefined
+    }
     let active = true
 
-    async function loadRemoteTimeline() {
+    async function loadRemoteData() {
       try {
-        const remoteItems = await studyAbroadApi.timeline(token)
+        const [remoteApplications, remoteItems] = await Promise.all([
+          studyAbroadApi.applications(token),
+          studyAbroadApi.timeline(token),
+        ])
         if (active) {
+          setApplications(remoteApplications)
           setItems(remoteItems)
-          setSyncNote('当前使用后端数据库保存时间线。')
+          setSyncNote('Loaded timeline and application projects from backend.')
         }
-      } catch {
+      } catch (error) {
         if (active) {
-          setSyncNote('后端暂不可用，当前使用本地演示时间线。')
+          setSyncNote(error.message || 'Backend unavailable. Showing local demo timeline.')
         }
       }
     }
 
-    loadRemoteTimeline()
+    loadRemoteData()
     return () => {
       active = false
     }
@@ -75,7 +112,7 @@ export default function TimelinePage() {
   }
 
   const filteredItems = useMemo(() => {
-    const nextItems = phase === '全部阶段'
+    const nextItems = phase === 'All phases'
       ? items
       : items.filter((item) => item.phase === phase)
     return [...nextItems].sort((a, b) => a.dueDate.localeCompare(b.dueDate))
@@ -88,34 +125,44 @@ export default function TimelinePage() {
     return { done, doing, rate }
   }, [items])
 
+  function enrichWithApplication(payload) {
+    const app = findApplication(applications, payload.applicationId)
+    return {
+      ...payload,
+      applicationSchool: app?.school || null,
+      applicationProgram: app?.program || null,
+    }
+  }
+
   async function addItem(event) {
     event.preventDefault()
     const title = form.title.trim()
     if (!title) return
 
     const payload = {
+      applicationId: normalizeApplicationId(form.applicationId, canUseRemote),
       title,
-      country: form.country.trim() || '未填写',
-      school: form.school.trim() || '目标院校待定',
+      country: form.country.trim() || 'Unspecified',
+      school: form.school.trim() || 'School TBD',
       phase: form.phase,
       dueDate: form.dueDate,
       status: 'todo',
-      note: form.note.trim() || '暂无备注',
+      note: form.note.trim() || 'No note',
     }
 
     if (canUseRemote) {
       try {
         const created = await studyAbroadApi.createTimeline(payload, token)
         setItems([...items, created].sort((a, b) => a.dueDate.localeCompare(b.dueDate)))
-        setSyncNote('节点已保存到后端数据库。')
+        setSyncNote('Timeline item saved to backend.')
       } catch (error) {
-        setSyncNote(error.message || '后端保存失败，请稍后再试。')
+        setSyncNote(error.message || 'Backend save failed.')
         return
       }
     } else {
-      updateLocalItems([...items, { id: createId(), ...payload }])
+      updateLocalItems([...items, { id: createId(), ...enrichWithApplication(payload) }])
     }
-    setForm({ ...form, title: '', school: '', note: '' })
+    setForm({ ...emptyForm, applicationId: form.applicationId })
   }
 
   async function cycleStatus(targetId) {
@@ -127,20 +174,16 @@ export default function TimelinePage() {
 
     if (canUseRemote) {
       try {
-        const updated = await studyAbroadApi.updateTimeline(targetId, nextItem, token)
+        const updated = await studyAbroadApi.updateTimeline(targetId, toTimelinePayload(nextItem, canUseRemote), token)
         setItems(items.map((item) => (item.id === targetId ? updated : item)))
-        setSyncNote('节点状态已同步到后端。')
+        setSyncNote('Timeline status synced to backend.')
       } catch (error) {
-        setSyncNote(error.message || '状态同步失败，请稍后再试。')
+        setSyncNote(error.message || 'Status sync failed.')
       }
       return
     }
 
-    updateLocalItems(items.map((item) => {
-      if (item.id !== targetId) return item
-      const nextIndex = (order.indexOf(item.status) + 1) % order.length
-      return { ...item, status: order[nextIndex] }
-    }))
+    updateLocalItems(items.map((item) => (item.id === targetId ? nextItem : item)))
   }
 
   async function removeItem(targetId) {
@@ -148,9 +191,9 @@ export default function TimelinePage() {
       try {
         await studyAbroadApi.deleteTimeline(targetId, token)
         setItems(items.filter((item) => item.id !== targetId))
-        setSyncNote('节点已从后端删除。')
+        setSyncNote('Timeline item deleted from backend.')
       } catch (error) {
-        setSyncNote(error.message || '删除失败，请稍后再试。')
+        setSyncNote(error.message || 'Delete failed.')
       }
       return
     }
@@ -164,28 +207,40 @@ export default function TimelinePage() {
         <section className="section">
           <div className="detail-header">
             <div>
-              <p className="eyebrow">留学 · 时间管理</p>
-              <h2>申请时间线管理</h2>
-              <p className="muted">新增申请节点、切换完成状态，并按阶段查看后续任务。</p>
+              <p className="eyebrow">Study Abroad · Timeline</p>
+              <h2>Application Timeline</h2>
+              <p className="muted">Create timeline tasks and bind them to specific application projects.</p>
             </div>
-            <Link className="btn ghost" to="/studyabroad">返回面板</Link>
+            <Link className="btn ghost" to="/studyabroad">Back to dashboard</Link>
           </div>
 
           <div className="grid-two">
             <form className="feature-card" onSubmit={addItem}>
-              <div className="card-title">新增申请节点</div>
+              <div className="card-title">New Timeline Item</div>
               <label className="field">
-                <span>节点名称</span>
+                <span>Application Project</span>
+                <select
+                  value={form.applicationId}
+                  onChange={(event) => setForm({ ...form, applicationId: event.target.value })}
+                >
+                  <option value="">General / not linked</option>
+                  {applications.map((item) => (
+                    <option key={item.id} value={String(item.id)}>{appLabel(item)}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>Item Title</span>
                 <input
                   type="text"
                   value={form.title}
-                  placeholder="例如：完成 PS 第二稿"
+                  placeholder="Example: Finish second PS draft"
                   onChange={(event) => setForm({ ...form, title: event.target.value })}
                 />
               </label>
               <div className="grid-two compact">
                 <label className="field">
-                  <span>国家/地区</span>
+                  <span>Country / Region</span>
                   <input
                     type="text"
                     value={form.country}
@@ -193,29 +248,26 @@ export default function TimelinePage() {
                   />
                 </label>
                 <label className="field">
-                  <span>目标院校</span>
+                  <span>Target School</span>
                   <input
                     type="text"
                     value={form.school}
-                    placeholder="可留空"
+                    placeholder="Can be left blank"
                     onChange={(event) => setForm({ ...form, school: event.target.value })}
                   />
                 </label>
               </div>
               <div className="grid-two compact">
                 <label className="field">
-                  <span>阶段</span>
-                  <select
-                    value={form.phase}
-                    onChange={(event) => setForm({ ...form, phase: event.target.value })}
-                  >
+                  <span>Phase</span>
+                  <select value={form.phase} onChange={(event) => setForm({ ...form, phase: event.target.value })}>
                     {phases.slice(1).map((item) => (
                       <option key={item} value={item}>{item}</option>
                     ))}
                   </select>
                 </label>
                 <label className="field">
-                  <span>截止日期</span>
+                  <span>Due Date</span>
                   <input
                     type="date"
                     value={form.dueDate}
@@ -224,41 +276,40 @@ export default function TimelinePage() {
                 </label>
               </div>
               <label className="field">
-                <span>备注</span>
+                <span>Note</span>
                 <textarea
                   rows="3"
                   value={form.note}
-                  placeholder="写下材料、提醒或下一步动作"
+                  placeholder="Write materials, reminders, or next actions"
                   onChange={(event) => setForm({ ...form, note: event.target.value })}
                 />
               </label>
-              <button className="btn primary" type="submit">添加节点</button>
+              <button className="btn primary" type="submit">Add Item</button>
             </form>
 
             <div className="feature-card metrics">
-              <div className="card-title">申请进度</div>
+              <div className="card-title">Progress</div>
               <div className="mini-grid">
                 <div className="mini-card">
                   <div className="mini-value">{items.length}</div>
-                  <div className="mini-label">总节点</div>
+                  <div className="mini-label">Total</div>
                 </div>
                 <div className="mini-card">
                   <div className="mini-value">{stats.doing}</div>
-                  <div className="mini-label">进行中</div>
+                  <div className="mini-label">Doing</div>
                 </div>
                 <div className="mini-card">
                   <div className="mini-value">{stats.done}</div>
-                  <div className="mini-label">已完成</div>
+                  <div className="mini-label">Done</div>
                 </div>
               </div>
               <div className="progress-block">
-                <div className="progress-label">完成率 {stats.rate}%</div>
+                <div className="progress-label">Completion {stats.rate}%</div>
                 <div className="progress-bar"><span style={{ width: `${stats.rate}%` }} /></div>
-              <div className="progress-note">点击节点状态按钮可在“待开始/进行中/已完成”之间切换。</div>
-            </div>
+              </div>
               {syncNote ? <div className="notice-box"><p className="muted">{syncNote}</p></div> : null}
               <label className="field">
-                <span>阶段筛选</span>
+                <span>Phase Filter</span>
                 <select value={phase} onChange={(event) => setPhase(event.target.value)}>
                   {phases.map((item) => (
                     <option key={item} value={item}>{item}</option>
@@ -273,9 +324,7 @@ export default function TimelinePage() {
               const left = daysLeft(item.dueDate)
               return (
                 <article className="study-row" key={item.id}>
-                  <div className={`study-status ${item.status}`}>
-                    {statusLabels[item.status]}
-                  </div>
+                  <div className={`study-status ${item.status}`}>{statusLabels[item.status]}</div>
                   <div className="study-row-main">
                     <div className="study-row-title">{item.title}</div>
                     <div className="detail-meta">
@@ -284,17 +333,23 @@ export default function TimelinePage() {
                       <span>{item.phase}</span>
                       <span>{item.dueDate}</span>
                     </div>
+                    {item.applicationSchool ? (
+                      <div className="tag-row">
+                        <span className="tag subtle">{item.applicationSchool}</span>
+                        <span className="tag subtle">{item.applicationProgram}</span>
+                      </div>
+                    ) : null}
                     <p className="muted">{item.note}</p>
                   </div>
                   <div className="study-row-side">
                     <span className={`tag ${left < 0 ? 'danger' : 'subtle'}`}>
-                      {left < 0 ? `逾期 ${Math.abs(left)} 天` : `剩余 ${left} 天`}
+                      {left < 0 ? `${Math.abs(left)} days overdue` : `${left} days left`}
                     </span>
                     <button className="btn ghost small" type="button" onClick={() => cycleStatus(item.id)}>
-                      切换状态
+                      Switch Status
                     </button>
                     <button className="btn outline small" type="button" onClick={() => removeItem(item.id)}>
-                      删除
+                      Delete
                     </button>
                   </div>
                 </article>

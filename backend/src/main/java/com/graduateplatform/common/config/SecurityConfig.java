@@ -32,6 +32,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login", "/api/auth/send-code").permitAll()
                 // Study abroad management APIs require authenticated users
                 .requestMatchers("/api/studyabroad/**").authenticated()
+                // Kaoyan materials - my page and download require auth
+                .requestMatchers("/api/kaoyan/materials/my").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/kaoyan/materials/*/download/*").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/kaoyan/materials").authenticated()
                 // Admin APIs must be declared before generic /api/** GET allow rules
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 // Kaogong endpoints that require authenticated users

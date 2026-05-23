@@ -16,7 +16,11 @@ import PostEditPage from './pages/PostEditPage.jsx'
 import KaoyanPage from './pages/kaoyan/KaoyanPage.jsx'
 import ScoreQueryPage from './pages/kaoyan/ScoreQueryPage.jsx'
 import StudyPlanPage from './pages/kaoyan/StudyPlanPage.jsx'
+import StudyPlanDetailPage from './pages/kaoyan/StudyPlanDetailPage.jsx'
 import MaterialsPage from './pages/kaoyan/MaterialsPage.jsx'
+import MaterialUploadPage from './pages/kaoyan/MaterialUploadPage.jsx'
+import MaterialDetailPage from './pages/kaoyan/MaterialDetailPage.jsx'
+import MyMaterialsPage from './pages/kaoyan/MyMaterialsPage.jsx'
 import StudyRoomPage from './pages/kaoyan/StudyRoomPage.jsx'
 import ConsultPage from './pages/kaoyan/ConsultPage.jsx'
 
@@ -30,12 +34,15 @@ import MockInterviewPage from './pages/kaogong/MockInterviewPage.jsx'
 // 就业方向专属页面
 import JobPage from './pages/job/JobPage.jsx'
 import CareerFairPage from './pages/job/CareerFairPage.jsx'
+import CareerFairDetailPage from './pages/job/CareerFairDetailPage.jsx'
 import ResumePage from './pages/job/ResumePage.jsx'
 import JobRecommendPage from './pages/job/JobRecommendPage.jsx'
+import JobPostingDetailPage from './pages/job/JobPostingDetailPage.jsx'
 import ApplicationTrackingPage from './pages/job/ApplicationTrackingPage.jsx'
 
 // 留学方向专属页面
 import StudyAbroadPage from './pages/studyabroad/StudyAbroadPage.jsx'
+import ApplicationsPage from './pages/studyabroad/ApplicationsPage.jsx'
 import TimelinePage from './pages/studyabroad/TimelinePage.jsx'
 import SAMaterialsPage from './pages/studyabroad/SAMaterialsPage.jsx'
 import ExperiencePage from './pages/studyabroad/ExperiencePage.jsx'
@@ -47,6 +54,8 @@ import UserManagementPage from './pages/admin/UserManagementPage.jsx'
 import KaogongDataPage from './pages/admin/KaogongDataPage.jsx'
 import ReportPage from './pages/admin/ReportPage.jsx'
 import EmploymentManagementPage from './pages/admin/EmploymentManagementPage.jsx'
+import AdminKaoyanDataPage from './pages/admin/AdminKaoyanDataPage.jsx'
+import AdminMaterialReviewPage from './pages/admin/AdminMaterialReviewPage.jsx'
 
 export default function App() {
   return (
@@ -68,7 +77,11 @@ export default function App() {
       <Route path="/kaoyan" element={<KaoyanPage />} />
       <Route path="/kaoyan/scores" element={<ScoreQueryPage />} />
       <Route path="/kaoyan/plan" element={<StudyPlanPage />} />
+      <Route path="/kaoyan/plan/:id" element={<StudyPlanDetailPage />} />
       <Route path="/kaoyan/materials" element={<MaterialsPage />} />
+      <Route path="/kaoyan/materials/upload" element={<MaterialUploadPage />} />
+      <Route path="/kaoyan/materials/:id" element={<MaterialDetailPage />} />
+      <Route path="/kaoyan/materials/my" element={<MyMaterialsPage />} />
       <Route path="/kaoyan/studyroom" element={<StudyRoomPage />} />
       <Route path="/kaoyan/consult" element={<ConsultPage />} />
 
@@ -82,12 +95,15 @@ export default function App() {
       {/* 就业方向专属 */}
       <Route path="/job" element={<JobPage />} />
       <Route path="/job/fairs" element={<CareerFairPage />} />
+      <Route path="/job/fairs/:id" element={<CareerFairDetailPage />} />
       <Route path="/job/resume" element={<ResumePage />} />
       <Route path="/job/recommend" element={<JobRecommendPage />} />
+      <Route path="/job/postings/:id" element={<JobPostingDetailPage />} />
       <Route path="/job/applications" element={<ApplicationTrackingPage />} />
 
       {/* 留学方向专属 */}
       <Route path="/studyabroad" element={<StudyAbroadPage />} />
+      <Route path="/studyabroad/applications" element={<ApplicationsPage />} />
       <Route path="/studyabroad/timeline" element={<TimelinePage />} />
       <Route path="/studyabroad/materials" element={<SAMaterialsPage />} />
       <Route path="/studyabroad/experience" element={<ExperiencePage />} />
@@ -99,6 +115,8 @@ export default function App() {
       <Route path="/admin/kaogong-data" element={<KaogongDataPage />} />
       <Route path="/admin/reports" element={<ReportPage />} />
       <Route path="/admin/employment" element={<EmploymentManagementPage />} />
+      <Route path="/admin/kaoyan-data" element={<AdminKaoyanDataPage />} />
+      <Route path="/admin/material-review" element={<AdminMaterialReviewPage />} />
     </Routes>
     </>
   )

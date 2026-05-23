@@ -23,6 +23,10 @@ public class StudyAbroadMaterial {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "application_id")
+    private StudyAbroadApplication application;
+
     @Column(nullable = false, length = 80)
     private String title;
 

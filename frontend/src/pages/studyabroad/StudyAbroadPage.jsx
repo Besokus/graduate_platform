@@ -12,6 +12,12 @@ import '../../App.css'
 
 const features = [
   {
+    title: 'Application Projects',
+    desc: 'Track target schools, programs, rounds, deadlines, status, and priority in one place.',
+    to: '/studyabroad/applications',
+    metric: 'Project tracking',
+  },
+  {
     title: '申请时间线管理',
     desc: '管理语言考试、选校、文书、网申、面试和签证节点。',
     to: '/studyabroad/timeline',

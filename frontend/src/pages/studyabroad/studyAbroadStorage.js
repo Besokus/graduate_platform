@@ -1,89 +1,204 @@
 const TIMELINE_KEY = 'gp_studyabroad_timeline'
 const MATERIALS_KEY = 'gp_studyabroad_materials'
+const APPLICATIONS_KEY = 'gp_studyabroad_applications'
+const EXPERIENCES_KEY = 'gp_studyabroad_experiences'
+
+export const defaultApplicationItems = [
+  {
+    id: 'ucl-cs',
+    country: 'UK',
+    school: 'University College London',
+    program: 'Computer Science MSc',
+    degree: 'Master',
+    intake: '2027 Fall',
+    applicationRound: 'Round 1',
+    deadline: '2026-10-15',
+    status: 'preparing',
+    priority: 'dream',
+    note: 'Focus on PS, transcript, recommendation letters, and IELTS score.',
+  },
+  {
+    id: 'manchester-ai',
+    country: 'UK',
+    school: 'University of Manchester',
+    program: 'Advanced Computer Science MSc',
+    degree: 'Master',
+    intake: '2027 Fall',
+    applicationRound: 'Rolling',
+    deadline: '2026-11-30',
+    status: 'planning',
+    priority: 'match',
+    note: 'Check course matching and scholarship deadline before submission.',
+  },
+  {
+    id: 'monash-it',
+    country: 'Australia',
+    school: 'Monash University',
+    program: 'Information Technology Master',
+    degree: 'Master',
+    intake: '2027 Spring',
+    applicationRound: 'Main',
+    deadline: '2026-09-20',
+    status: 'planning',
+    priority: 'safe',
+    note: 'Prepare passport scan, transcript, CV, and financial documents.',
+  },
+]
 
 export const defaultTimelineItems = [
   {
     id: 'language-test',
-    title: '语言考试报名与备考',
-    country: '英国',
-    school: '目标院校待定',
-    phase: '语言考试',
+    applicationId: 'ucl-cs',
+    applicationSchool: 'University College London',
+    applicationProgram: 'Computer Science MSc',
+    title: 'Book IELTS test slot',
+    country: 'UK',
+    school: 'University College London',
+    phase: 'Language test',
     dueDate: '2026-06-20',
     status: 'doing',
-    note: '确认 IELTS/TOEFL 考位，整理单词和听力计划。',
+    note: 'Confirm IELTS/TOEFL date and organize vocabulary and listening plan.',
   },
   {
     id: 'school-shortlist',
-    title: '确定选校清单',
-    country: '英国',
-    school: 'UCL / Manchester',
-    phase: '选校定位',
+    applicationId: 'manchester-ai',
+    applicationSchool: 'University of Manchester',
+    applicationProgram: 'Advanced Computer Science MSc',
+    title: 'Finalize school shortlist',
+    country: 'UK',
+    school: 'University of Manchester',
+    phase: 'School selection',
     dueDate: '2026-07-15',
     status: 'todo',
-    note: '按专业排名、费用、地区和申请难度分为冲刺/匹配/保底。',
+    note: 'Split target schools into dream, match, and safe tiers.',
   },
   {
     id: 'documents',
-    title: '准备 PS、CV 与推荐信',
-    country: '英国',
-    school: 'UCL',
-    phase: '文书材料',
+    applicationId: 'ucl-cs',
+    applicationSchool: 'University College London',
+    applicationProgram: 'Computer Science MSc',
+    title: 'Prepare PS, CV, and references',
+    country: 'UK',
+    school: 'University College London',
+    phase: 'Documents',
     dueDate: '2026-08-30',
     status: 'todo',
-    note: '完成个人陈述初稿，联系两位推荐老师。',
+    note: 'Finish personal statement draft and contact two referees.',
   },
   {
     id: 'application-submit',
-    title: '网申提交与材料核对',
-    country: '英国',
-    school: 'UCL',
-    phase: '网申提交',
+    applicationId: 'ucl-cs',
+    applicationSchool: 'University College London',
+    applicationProgram: 'Computer Science MSc',
+    title: 'Submit online application',
+    country: 'UK',
+    school: 'University College London',
+    phase: 'Submission',
     dueDate: '2026-10-10',
     status: 'todo',
-    note: '上传成绩单、语言成绩、文书和推荐信。',
+    note: 'Upload transcript, language score, PS, CV, and references.',
   },
 ]
 
 export const defaultMaterialItems = [
   {
     id: 'passport',
-    title: '护照扫描件',
-    country: '通用',
-    stage: '身份材料',
-    category: '基础材料',
+    applicationId: null,
+    applicationSchool: null,
+    applicationProgram: null,
+    title: 'Passport scan',
+    country: 'General',
+    stage: 'Identity',
+    category: 'Basic document',
     deadline: '2026-06-01',
     completed: true,
-    note: '确保护照有效期覆盖申请和入学阶段。',
+    note: 'Check that the passport remains valid through the application and enrollment period.',
   },
   {
     id: 'transcript',
-    title: '中英文成绩单',
-    country: '通用',
-    stage: '学术材料',
-    category: '成绩证明',
+    applicationId: 'ucl-cs',
+    applicationSchool: 'University College London',
+    applicationProgram: 'Computer Science MSc',
+    title: 'Chinese and English transcript',
+    country: 'General',
+    stage: 'Academic',
+    category: 'Transcript',
     deadline: '2026-07-01',
     completed: false,
-    note: '需要学院或教务处盖章版本。',
+    note: 'Needs official stamp from school or academic affairs office.',
   },
   {
     id: 'ps',
-    title: 'Personal Statement 初稿',
-    country: '英国',
-    stage: '文书材料',
-    category: '文书模板',
+    applicationId: 'ucl-cs',
+    applicationSchool: 'University College London',
+    applicationProgram: 'Computer Science MSc',
+    title: 'Personal Statement draft',
+    country: 'UK',
+    stage: 'Documents',
+    category: 'Writing',
     deadline: '2026-08-10',
     completed: false,
-    note: '突出课程匹配、项目经历和职业规划。',
+    note: 'Highlight course fit, project experience, and career plan.',
   },
   {
     id: 'visa-fund',
-    title: '签证资金证明',
-    country: '英国',
-    stage: '签证准备',
-    category: '签证',
+    applicationId: 'manchester-ai',
+    applicationSchool: 'University of Manchester',
+    applicationProgram: 'Advanced Computer Science MSc',
+    title: 'Visa financial proof',
+    country: 'UK',
+    stage: 'Visa',
+    category: 'Visa',
     deadline: '2026-11-20',
     completed: false,
-    note: '后续根据 CAS 和签证要求更新。',
+    note: 'Update after CAS and visa requirement confirmation.',
+  },
+]
+
+export const defaultExperienceItems = [
+  {
+    id: 'uk-ps',
+    title: 'How I shaped a UK taught master PS',
+    country: 'UK',
+    topic: 'Writing',
+    authorName: 'Senior Student A',
+    readTime: '6 min',
+    summary: 'Start from course fit, then connect projects and career goals instead of turning the PS into a resume.',
+    content: 'A strong PS should explain why this exact program fits your background. I first listed target modules, then matched each module with one project or internship experience.',
+    tags: ['PS', 'course fit', 'documents'],
+  },
+  {
+    id: 'us-shortlist',
+    title: 'Splitting US CS programs into dream, match, and safe tiers',
+    country: 'US',
+    topic: 'School Selection',
+    authorName: 'CS Applicant B',
+    readTime: '8 min',
+    summary: 'Use GPA, language score, research, internship, and admission preference to reduce blind applications.',
+    content: 'I built a spreadsheet with five columns: admission difficulty, course fit, tuition, location, and career outcome. The final list had two dream, four match, and two safe options.',
+    tags: ['school list', 'CS', 'positioning'],
+  },
+  {
+    id: 'au-visa',
+    title: 'Australian student visa material checklist',
+    country: 'Australia',
+    topic: 'Visa',
+    authorName: 'Southern Hemisphere Observer',
+    readTime: '5 min',
+    summary: 'Prepare passport, COE, financial proof, and medical examination early to avoid deadline pressure.',
+    content: 'The most useful thing was checking document validity before receiving the offer. Passport and financial proof both need enough buffer time.',
+    tags: ['visa', 'COE', 'financial proof'],
+  },
+  {
+    id: 'sg-language',
+    title: 'Language score planning for Singapore applications',
+    country: 'Singapore',
+    topic: 'Language Test',
+    authorName: 'NUS Application Log',
+    readTime: '4 min',
+    summary: 'Schedule language tests backward from application deadlines and reserve time for retake and score delivery.',
+    content: 'I treated the language score as a timeline item, not a side task. A second test slot was booked before the first score came out.',
+    tags: ['IELTS', 'TOEFL', 'timeline'],
   },
 ]
 
@@ -108,6 +223,14 @@ export function saveTimelineItems(items) {
   writeJson(TIMELINE_KEY, items)
 }
 
+export function getApplicationItems() {
+  return readJson(APPLICATIONS_KEY, defaultApplicationItems)
+}
+
+export function saveApplicationItems(items) {
+  writeJson(APPLICATIONS_KEY, items)
+}
+
 export function getMaterialItems() {
   return readJson(MATERIALS_KEY, defaultMaterialItems)
 }
@@ -116,7 +239,17 @@ export function saveMaterialItems(items) {
   writeJson(MATERIALS_KEY, items)
 }
 
+export function getExperienceItems() {
+  return readJson(EXPERIENCES_KEY, defaultExperienceItems)
+}
+
+export function saveExperienceItems(items) {
+  writeJson(EXPERIENCES_KEY, items)
+}
+
 export function resetStudyAbroadStorage() {
+  localStorage.removeItem(EXPERIENCES_KEY)
+  localStorage.removeItem(APPLICATIONS_KEY)
   localStorage.removeItem(TIMELINE_KEY)
   localStorage.removeItem(MATERIALS_KEY)
 }

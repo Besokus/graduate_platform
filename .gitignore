@@ -25,6 +25,7 @@ logs/
 # IDE / OS files
 .idea/
 .vscode/
+.claude/
 *.iml
 .DS_Store
 Thumbs.db
@@ -39,9 +40,9 @@ Microsoft/
 # Local/generated artifacts
 .omx/
 docs/
-
 # Besokus
 AGENTS.md
 task_plan.md
 findings.md
 progress.md
+CLAUDE.md

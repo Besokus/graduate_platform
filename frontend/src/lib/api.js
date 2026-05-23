@@ -161,8 +161,14 @@ export const employmentApi = {
   fairs(params = {}) {
     return request(appendParams('/api/job/fairs', params))
   },
+  fairDetail(id) {
+    return request(`/api/job/fairs/${id}`)
+  },
   postings(params = {}) {
     return request(appendParams('/api/job/postings', params))
+  },
+  postingDetail(id) {
+    return request(`/api/job/postings/${id}`)
   },
   preference(token) {
     return request('/api/job/preferences', { token })
@@ -267,7 +273,85 @@ export const userApi = {
   },
 }
 
+export const materialApi = {
+  listPage(params = {}) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') search.set(k, v)
+    })
+    return request(`/api/kaoyan/materials/page?${search.toString()}`)
+  },
+  detail(id, token) {
+    return request(`/api/kaoyan/materials/${id}`, { token })
+  },
+  myMaterials(params = {}, token) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') search.set(k, v)
+    })
+    return request(`/api/kaoyan/materials/my?${search.toString()}`, { token })
+  },
+  downloadUrl(materialId, attachmentId) {
+    return `${API_BASE}/api/kaoyan/materials/${materialId}/download/${attachmentId}`
+  },
+}
+
+export const adminMaterialApi = {
+  pending(params = {}, token) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') search.set(k, v)
+    })
+    return request(`/api/admin/kaoyan/materials/pending?${search.toString()}`, { token })
+  },
+  listPage(params = {}, token) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') search.set(k, v)
+    })
+    return request(`/api/admin/kaoyan/materials/page?${search.toString()}`, { token })
+  },
+  review(id, status, token) {
+    return request(`/api/admin/kaoyan/materials/${id}/review`, {
+      method: 'PUT',
+      body: { status },
+      token,
+    })
+  },
+  delete(id, token) {
+    return request(`/api/admin/kaoyan/materials/${id}`, { method: 'DELETE', token })
+  },
+}
+
 export const studyAbroadApi = {
+  experiences(params = {}, token) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '' && value !== 'all') {
+        search.set(key, value)
+      }
+    })
+    const query = search.toString()
+    return request(`/api/studyabroad/experiences${query ? `?${query}` : ''}`, { token })
+  },
+  createExperience(payload, token) {
+    return request('/api/studyabroad/experiences', { method: 'POST', body: payload, token })
+  },
+  deleteExperience(id, token) {
+    return request(`/api/studyabroad/experiences/${id}`, { method: 'DELETE', token })
+  },
+  applications(token) {
+    return request('/api/studyabroad/applications', { token })
+  },
+  createApplication(payload, token) {
+    return request('/api/studyabroad/applications', { method: 'POST', body: payload, token })
+  },
+  updateApplication(id, payload, token) {
+    return request(`/api/studyabroad/applications/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteApplication(id, token) {
+    return request(`/api/studyabroad/applications/${id}`, { method: 'DELETE', token })
+  },
   timeline(token) {
     return request('/api/studyabroad/timeline', { token })
   },
@@ -512,6 +596,106 @@ export const kaogongApi = {
   },
 }
 
+export const kaoyanApi = {
+  schoolsPage(params = {}) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') search.set(k, v)
+    })
+    return request(`/api/kaoyan/schools/page?${search.toString()}`)
+  },
+  scoreLinesPage(params = {}) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') search.set(k, v)
+    })
+    return request(`/api/kaoyan/score-lines/page?${search.toString()}`)
+  },
+  favoriteScoreLine(id, token) {
+    return request(`/api/kaoyan/score-lines/${id}/favorite`, { method: 'POST', token })
+  },
+  unfavoriteScoreLine(id, token) {
+    return request(`/api/kaoyan/score-lines/${id}/favorite`, { method: 'DELETE', token })
+  },
+  favoriteScoreLines(token) {
+    return request('/api/kaoyan/score-lines/favorites', { token })
+  },
+}
+
+export const studyRoomApi = {
+  createRoom(payload, token) {
+    return request('/api/kaoyan/study-rooms', { method: 'POST', body: payload, token })
+  },
+  roomList(params = {}) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') search.set(k, v)
+    })
+    return request(`/api/kaoyan/study-rooms?${search.toString()}`)
+  },
+  roomDetail(id, token) {
+    return request(`/api/kaoyan/study-rooms/${id}`, { token })
+  },
+  joinRoom(id, token) {
+    return request(`/api/kaoyan/study-rooms/${id}/join`, { method: 'POST', token })
+  },
+  leaveRoom(token) {
+    return request('/api/kaoyan/study-rooms/leave', { method: 'POST', token })
+  },
+  messagesAfter(id, since, token) {
+    const url = since ? `/api/kaoyan/study-rooms/${id}/messages?since=${encodeURIComponent(since)}` : `/api/kaoyan/study-rooms/${id}/messages`
+    return request(url, { token })
+  },
+  sendMessage(id, content, token) {
+    return request(`/api/kaoyan/study-rooms/${id}/messages`, { method: 'POST', body: { content }, token })
+  },
+  roomStreamUrl(id) {
+    return `${API_BASE}/api/kaoyan/study-rooms/${id}/stream`
+  },
+  leaderboard(id, period, token) {
+    return request(`/api/kaoyan/study-rooms/${id}/leaderboard?period=${period}`, { token })
+  },
+  myCurrentRoom(token) {
+    return request('/api/kaoyan/study-rooms/me', { token })
+  },
+  myCreatedRooms(token) {
+    return request('/api/kaoyan/study-rooms/me/created', { token })
+  },
+  closeRoom(id, token) {
+    return request(`/api/kaoyan/study-rooms/${id}/close`, { method: 'PUT', token })
+  },
+}
+
+export const studyPlanApi = {
+  createPlan(payload, token) {
+    return request('/api/kaoyan/plans', { method: 'POST', body: payload, token })
+  },
+  myPlans(token) {
+    return request('/api/kaoyan/plans', { token })
+  },
+  planDetail(id, token) {
+    return request(`/api/kaoyan/plans/${id}`, { token })
+  },
+  updatePlan(id, payload, token) {
+    return request(`/api/kaoyan/plans/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deletePlan(id, token) {
+    return request(`/api/kaoyan/plans/${id}`, { method: 'DELETE', token })
+  },
+  addCheckIn(planId, payload, token) {
+    return request(`/api/kaoyan/plans/${planId}/checkins`, { method: 'POST', body: payload, token })
+  },
+  checkIns(planId, token) {
+    return request(`/api/kaoyan/plans/${planId}/checkins`, { token })
+  },
+  updateCheckIn(id, payload, token) {
+    return request(`/api/kaoyan/checkins/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteCheckIn(id, token) {
+    return request(`/api/kaoyan/checkins/${id}`, { method: 'DELETE', token })
+  },
+}
+
 export const adminApi = {
   dashboard(token) {
     return request('/api/admin/dashboard', { token })
@@ -597,5 +781,38 @@ export const adminApi = {
   },
   deleteKaogongCalendarEvent(id, token) {
     return request(`/api/admin/kaogong/calendar-events/${id}`, { method: 'DELETE', token })
+  },
+  // 考研管理
+  kaoyanSchools(params = {}, token) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') search.set(k, v)
+    })
+    return request(`/api/admin/kaoyan/schools?${search.toString()}`, { token })
+  },
+  createKaoyanSchool(payload, token) {
+    return request('/api/admin/kaoyan/schools', { method: 'POST', body: payload, token })
+  },
+  updateKaoyanSchool(id, payload, token) {
+    return request(`/api/admin/kaoyan/schools/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteKaoyanSchool(id, token) {
+    return request(`/api/admin/kaoyan/schools/${id}`, { method: 'DELETE', token })
+  },
+  kaoyanScoreLines(params = {}, token) {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') search.set(k, v)
+    })
+    return request(`/api/admin/kaoyan/score-lines?${search.toString()}`, { token })
+  },
+  createKaoyanScoreLine(payload, token) {
+    return request('/api/admin/kaoyan/score-lines', { method: 'POST', body: payload, token })
+  },
+  updateKaoyanScoreLine(id, payload, token) {
+    return request(`/api/admin/kaoyan/score-lines/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteKaoyanScoreLine(id, token) {
+    return request(`/api/admin/kaoyan/score-lines/${id}`, { method: 'DELETE', token })
   },
 }
