@@ -374,6 +374,12 @@ public class PracticeService {
                 .user(user)
                 .question(question)
                 .wrongCount(0)
+                .snapshotStem(question.getStem())
+                .snapshotTarget(question.getBank() != null ? question.getBank().getTarget() : null)
+                .snapshotSubject(question.getBank() != null ? question.getBank().getSubject() : null)
+                .snapshotChapter(question.getChapter())
+                .snapshotKnowledgePoint(question.getKnowledgePoint())
+                .snapshotQuestionType(question.getQuestionType())
                 .build());
         wrongQuestion.setWrongCount((wrongQuestion.getWrongCount() == null ? 0 : wrongQuestion.getWrongCount()) + 1);
         wrongQuestion.setLastAnswer(normalize(answer));
@@ -460,11 +466,11 @@ public class PracticeService {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", wrong.getId());
         map.put("questionId", question != null ? question.getId() : null);
-        map.put("stem", question != null ? question.getStem() : null);
-        map.put("target", question != null && question.getBank() != null ? question.getBank().getTarget() : null);
-        map.put("subject", question != null && question.getBank() != null ? question.getBank().getSubject() : null);
-        map.put("chapter", question != null ? question.getChapter() : null);
-        map.put("knowledgePoint", question != null ? question.getKnowledgePoint() : null);
+        map.put("stem", wrong.getSnapshotStem() != null ? wrong.getSnapshotStem() : (question != null ? question.getStem() : null));
+        map.put("target", wrong.getSnapshotTarget() != null ? wrong.getSnapshotTarget() : (question != null && question.getBank() != null ? question.getBank().getTarget() : null));
+        map.put("subject", wrong.getSnapshotSubject() != null ? wrong.getSnapshotSubject() : (question != null && question.getBank() != null ? question.getBank().getSubject() : null));
+        map.put("chapter", wrong.getSnapshotChapter() != null ? wrong.getSnapshotChapter() : (question != null ? question.getChapter() : null));
+        map.put("knowledgePoint", wrong.getSnapshotKnowledgePoint() != null ? wrong.getSnapshotKnowledgePoint() : (question != null ? question.getKnowledgePoint() : null));
         map.put("wrongCount", wrong.getWrongCount());
         map.put("lastAnswer", wrong.getLastAnswer());
         map.put("lastWrongAt", wrong.getLastWrongAt() != null ? wrong.getLastWrongAt().toString() : null);

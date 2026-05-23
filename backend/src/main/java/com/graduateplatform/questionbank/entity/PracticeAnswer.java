@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
     name = "practice_answers",
+    indexes = @Index(name = "idx_pa_session_order", columnList = "session_id,order_no"),
     uniqueConstraints = @UniqueConstraint(columnNames = {"session_id", "question_id"})
 )
 @Data

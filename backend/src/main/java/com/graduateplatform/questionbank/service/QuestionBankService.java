@@ -3,6 +3,7 @@ package com.graduateplatform.questionbank.service;
 import com.graduateplatform.questionbank.entity.QuestionBank;
 import com.graduateplatform.questionbank.repository.QuestionBankRepository;
 import com.graduateplatform.questionbank.repository.QuestionRepository;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +43,7 @@ public class QuestionBankService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable("questionBank:options")
     public Map<String, Object> getOptions() {
         Map<String, Object> options = new LinkedHashMap<>();
         options.put("targets", repository.findDistinctTargets());
