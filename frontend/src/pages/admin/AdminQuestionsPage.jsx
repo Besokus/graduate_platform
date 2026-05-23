@@ -20,6 +20,12 @@ export default function AdminQuestionsPage() {
     chapter: '', questionType: '', knowledgePoint: '', difficulty: '', year: '', status: 'published',
   })
   const [error, setError] = useState('')
+  const [showBatch, setShowBatch] = useState(false)
+  const [batchJson, setBatchJson] = useState('')
+  const [batchResult, setBatchResult] = useState(null)
+  const [snapshots, setSnapshots] = useState([])
+  const [showSnapshots, setShowSnapshots] = useState(false)
+  const [snapshotQuestionId, setSnapshotQuestionId] = useState(null)
   const SIZE = 20
 
   const loadQuestions = () => {
@@ -97,6 +103,32 @@ export default function AdminQuestionsPage() {
     }
   }
 
+  const handleBatchImport = async () => {
+    setError('')
+    setBatchResult(null)
+    try {
+      const parsed = JSON.parse(batchJson)
+      const questions = Array.isArray(parsed) ? parsed : (parsed.questions || [])
+      if (questions.length === 0) { setError('未解析到题目数据'); return }
+      const result = await adminQuestionBankApi.batchCreateQuestions(Number(bankId), questions, token)
+      setBatchResult(result)
+      loadQuestions()
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
+  const handleViewSnapshots = async (qId) => {
+    setSnapshotQuestionId(qId)
+    try {
+      const data = await adminQuestionBankApi.snapshots(qId, token)
+      setSnapshots(data)
+      setShowSnapshots(true)
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
   const truncate = (s, n = 60) => (s && s.length > n ? s.substring(0, n) + '...' : s)
 
   return (
@@ -113,8 +145,38 @@ export default function AdminQuestionsPage() {
 
           <div style={{ marginBottom: '1rem' }}>
             <button className="btn primary" type="button" onClick={openCreate}>新建题目</button>
+            <button className="btn outline" type="button" onClick={() => { setShowBatch(!showBatch); setBatchResult(null) }} style={{ marginLeft: '0.5rem' }}>批量导入</button>
             <Link className="btn outline" to="/admin/question-banks" style={{ marginLeft: '0.5rem' }}>返回题库列表</Link>
           </div>
+
+          {showBatch && (
+            <div className="card" style={{ marginBottom: '1.5rem', padding: '1.25rem' }}>
+              <h3 style={{ marginBottom: '0.5rem' }}>批量导入题目</h3>
+              <p className="muted" style={{ marginBottom: '1rem' }}>粘贴 JSON 数组，每项包含 stem(answer 必填)、optionsJson、analysis、chapter、questionType、difficulty、year 等字段。</p>
+              <textarea
+                rows={10} value={batchJson}
+                placeholder={'[\n  {"stem": "中国的首都是？", "optionsJson": "[\"A. 北京\",\"B. 上海\",\"C. 广州\",\"D. 深圳\"]", "answer": "A", "chapter": "地理", "questionType": "single", "difficulty": "easy"}\n]'}
+                onChange={(e) => setBatchJson(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--line)', borderRadius: '6px', fontSize: '13px', fontFamily: 'monospace' }}
+              />
+              <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button className="btn primary" type="button" onClick={handleBatchImport}>开始导入</button>
+                <button className="btn outline" type="button" onClick={() => { setBatchJson(''); setBatchResult(null) }}>清空</button>
+              </div>
+              {batchResult && (
+                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(15,118,110,0.06)', borderRadius: '6px' }}>
+                  <p>共 {batchResult.total} 条，成功 <strong>{batchResult.created}</strong> 条，失败 {batchResult.failed} 条</p>
+                  {batchResult.errors && batchResult.errors.length > 0 && (
+                    <ul style={{ marginTop: '0.5rem', fontSize: '13px', color: '#b91c1c' }}>
+                      {batchResult.errors.map((e, i) => (
+                        <li key={i}>第 {e.index} 条 (stem: {e.stem}) — {e.error}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {showForm && (
             <div className="card" style={{ marginBottom: '1.5rem', padding: '1.25rem' }}>
@@ -235,6 +297,7 @@ export default function AdminQuestionsPage() {
                   <td>{q.status || 'published'}</td>
                   <td>
                     <button className="btn outline small" type="button" onClick={() => openEdit(q)}>编辑</button>
+                    <button className="btn ghost small" type="button" onClick={() => handleViewSnapshots(q.id)} style={{ marginLeft: '0.25rem' }}>版本</button>
                     <button className="btn danger small" type="button" onClick={() => handleDelete(q.id, q.stem)} style={{ marginLeft: '0.25rem' }}>删除</button>
                   </td>
                 </tr>
@@ -250,6 +313,35 @@ export default function AdminQuestionsPage() {
               <button disabled={page === 0} onClick={() => setPage(page - 1)}>上一页</button>
               <span>{page + 1} / {totalPages}</span>
               <button disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>下一页</button>
+            </div>
+          )}
+
+          {showSnapshots && (
+            <div className="modal-overlay" onClick={() => setShowSnapshots(false)}>
+              <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+                <div className="modal-header">
+                  <h3>版本历史 — 题目 #{snapshotQuestionId}</h3>
+                  <button className="btn ghost small" type="button" onClick={() => setShowSnapshots(false)}>✕</button>
+                </div>
+                <div className="modal-body" style={{ display: 'block' }}>
+                  {snapshots.length === 0 ? (
+                    <p className="muted">暂无历史版本</p>
+                  ) : (
+                    snapshots.map((s) => (
+                      <div key={s.id} className="card" style={{ marginBottom: '0.75rem', padding: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                          <strong>v{s.versionNo}</strong>
+                          <span className="muted small">{s.createdAt}</span>
+                        </div>
+                        <p style={{ fontSize: '13px', marginBottom: '0.25rem' }}><strong>题干:</strong> {truncate(s.stem, 100)}</p>
+                        <p style={{ fontSize: '13px', marginBottom: '0.25rem' }}><strong>答案:</strong> {s.answer}</p>
+                        {s.chapter && <p style={{ fontSize: '13px', marginBottom: '0.25rem' }}><strong>章节:</strong> {s.chapter}</p>}
+                        {s.difficulty && <p style={{ fontSize: '13px' }}><strong>难度:</strong> {s.difficulty}</p>}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </section>

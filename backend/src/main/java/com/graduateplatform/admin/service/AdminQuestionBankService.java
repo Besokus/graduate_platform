@@ -3,8 +3,10 @@ package com.graduateplatform.admin.service;
 import com.graduateplatform.common.exception.BusinessException;
 import com.graduateplatform.questionbank.entity.Question;
 import com.graduateplatform.questionbank.entity.QuestionBank;
+import com.graduateplatform.questionbank.entity.QuestionSnapshot;
 import com.graduateplatform.questionbank.repository.QuestionBankRepository;
 import com.graduateplatform.questionbank.repository.QuestionRepository;
+import com.graduateplatform.questionbank.repository.QuestionSnapshotRepository;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -12,6 +14,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,11 +25,14 @@ public class AdminQuestionBankService {
 
     private final QuestionBankRepository bankRepository;
     private final QuestionRepository questionRepository;
+    private final QuestionSnapshotRepository snapshotRepository;
 
     public AdminQuestionBankService(QuestionBankRepository bankRepository,
-                                    QuestionRepository questionRepository) {
+                                    QuestionRepository questionRepository,
+                                    QuestionSnapshotRepository snapshotRepository) {
         this.bankRepository = bankRepository;
         this.questionRepository = questionRepository;
+        this.snapshotRepository = snapshotRepository;
     }
 
     // ==================== 题库管理 ====================
@@ -173,6 +179,9 @@ public class AdminQuestionBankService {
         Question question = questionRepository.findById(id)
             .orElseThrow(() -> new BusinessException("题目不存在"));
 
+        // Save snapshot of current state before modifying
+        saveSnapshot(question);
+
         if (body.containsKey("stem")) {
             String stem = (String) body.get("stem");
             if (stem == null || stem.isBlank()) {
@@ -213,6 +222,91 @@ public class AdminQuestionBankService {
         questionRepository.save(question);
     }
 
+    // ==================== 批量导入 ====================
+
+    @Transactional
+    @CacheEvict(value = "questionBank:options", allEntries = true)
+    public Map<String, Object> batchCreateQuestions(Long bankId, List<Map<String, Object>> questions) {
+        QuestionBank bank = bankRepository.findById(bankId)
+            .orElseThrow(() -> new BusinessException("题库不存在"));
+
+        int created = 0;
+        List<Map<String, String>> errors = new ArrayList<>();
+
+        for (int i = 0; i < questions.size(); i++) {
+            Map<String, Object> body = questions.get(i);
+            try {
+                String stem = (String) body.get("stem");
+                String answer = (String) body.get("answer");
+                if (stem == null || stem.isBlank()) {
+                    throw new BusinessException("题干不能为空");
+                }
+                if (answer == null || answer.isBlank()) {
+                    throw new BusinessException("答案不能为空");
+                }
+
+                Question question = Question.builder()
+                    .bank(bank)
+                    .stem(stem.trim())
+                    .optionsJson(nullable(body.get("optionsJson")))
+                    .answer(answer.trim())
+                    .analysis(nullable(body.get("analysis")))
+                    .chapter(nullable(body.get("chapter")))
+                    .questionType(nullable(body.get("questionType")))
+                    .knowledgePoint(nullable(body.get("knowledgePoint")))
+                    .difficulty(nullable(body.get("difficulty")))
+                    .year(body.get("year") != null ? ((Number) body.get("year")).intValue() : null)
+                    .status("published")
+                    .active(true)
+                    .versionNo(1)
+                    .build();
+
+                questionRepository.save(question);
+                created++;
+            } catch (Exception e) {
+                Map<String, String> err = new LinkedHashMap<>();
+                err.put("index", String.valueOf(i));
+                err.put("stem", body != null ? truncate((String) body.get("stem"), 50) : "?");
+                err.put("error", e.getMessage());
+                errors.add(err);
+            }
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("created", created);
+        result.put("failed", errors.size());
+        result.put("total", questions.size());
+        result.put("errors", errors);
+        return result;
+    }
+
+    // ==================== 版本快照 ====================
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getSnapshots(Long questionId) {
+        return snapshotRepository.findByQuestionIdOrderByVersionNoDesc(questionId)
+            .stream().map(this::snapshotToMap)
+            .toList();
+    }
+
+    private void saveSnapshot(Question q) {
+        QuestionSnapshot snapshot = QuestionSnapshot.builder()
+            .questionId(q.getId())
+            .bankId(q.getBank() != null ? q.getBank().getId() : null)
+            .stem(q.getStem())
+            .optionsJson(q.getOptionsJson())
+            .answer(q.getAnswer())
+            .analysis(q.getAnalysis())
+            .chapter(q.getChapter())
+            .questionType(q.getQuestionType())
+            .knowledgePoint(q.getKnowledgePoint())
+            .difficulty(q.getDifficulty())
+            .year(q.getYear())
+            .versionNo(q.getVersionNo() == null ? 1 : q.getVersionNo())
+            .build();
+        snapshotRepository.save(snapshot);
+    }
+
     // ==================== 辅助 ====================
 
     private Map<String, Object> bankToMap(QuestionBank bank) {
@@ -250,5 +344,26 @@ public class AdminQuestionBankService {
             return null;
         }
         return value.toString().trim();
+    }
+
+    private String truncate(String s, int max) {
+        return s != null && s.length() > max ? s.substring(0, max) + "..." : s;
+    }
+
+    private Map<String, Object> snapshotToMap(QuestionSnapshot s) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", s.getId());
+        m.put("stem", s.getStem());
+        m.put("optionsJson", s.getOptionsJson());
+        m.put("answer", s.getAnswer());
+        m.put("analysis", s.getAnalysis());
+        m.put("chapter", s.getChapter());
+        m.put("questionType", s.getQuestionType());
+        m.put("knowledgePoint", s.getKnowledgePoint());
+        m.put("difficulty", s.getDifficulty());
+        m.put("year", s.getYear());
+        m.put("versionNo", s.getVersionNo());
+        m.put("createdAt", s.getCreatedAt() != null ? s.getCreatedAt().toString() : null);
+        return m;
     }
 }

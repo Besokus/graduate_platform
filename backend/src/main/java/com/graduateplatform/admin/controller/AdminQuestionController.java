@@ -28,4 +28,9 @@ public class AdminQuestionController {
         service.deleteQuestion(id);
         return ApiResponse.ok(null, "题目删除成功");
     }
+
+    @GetMapping("/{id}/snapshots")
+    public ApiResponse<?> getSnapshots(@PathVariable Long id) {
+        return ApiResponse.ok(service.getSnapshots(id));
+    }
 }

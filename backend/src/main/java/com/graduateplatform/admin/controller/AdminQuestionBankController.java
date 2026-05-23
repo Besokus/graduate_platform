@@ -5,6 +5,7 @@ import com.graduateplatform.common.dto.ApiResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -54,5 +55,15 @@ public class AdminQuestionBankController {
     @PostMapping("/{bankId}/questions")
     public ApiResponse<?> createQuestion(@PathVariable Long bankId, @RequestBody Map<String, Object> body) {
         return ApiResponse.ok(service.createQuestion(bankId, body), "题目创建成功");
+    }
+
+    @PostMapping("/{bankId}/questions/batch")
+    public ApiResponse<?> batchCreateQuestions(@PathVariable Long bankId, @RequestBody Map<String, Object> body) {
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> questions = (List<Map<String, Object>>) body.get("questions");
+        if (questions == null || questions.isEmpty()) {
+            return ApiResponse.fail("questions 数组不能为空");
+        }
+        return ApiResponse.ok(service.batchCreateQuestions(bankId, questions), "批量导入完成");
     }
 }
