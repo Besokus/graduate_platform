@@ -40,15 +40,36 @@ public class PracticeSession {
 
     private Integer totalCount;
 
+    private Integer answeredCount;
+
     private Integer correctCount;
 
     private Integer wrongCount;
+
+    private Integer subjectiveCount;
 
     private Integer durationSeconds;
 
     private Integer score;
 
     private Integer accuracy;
+
+    // ===== 筛选条件冗余（便于独立统计，不依赖关联查询题库） =====
+
+    private String target;
+
+    private String subject;
+
+    private String chapter;
+
+    private String questionType;
+
+    private String difficulty;
+
+    private Integer year;
+
+    @Column(columnDefinition = "TEXT")
+    private String sourceRuleJson; // 创建规则，如随机题量、章节集合、模拟卷来源
 
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("orderNo ASC")

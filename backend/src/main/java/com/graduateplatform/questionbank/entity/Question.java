@@ -39,6 +39,8 @@ public class Question {
 
     private String status; // draft / published / disabled
 
+    private Integer versionNo; // 题目版本号，与快照对齐
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "bank_id", nullable = false)
     private QuestionBank bank;

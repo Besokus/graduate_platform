@@ -99,12 +99,31 @@ public class PracticeService {
             .answers(new ArrayList<>())
             .build();
 
+        // 冗余筛选条件到会话，便于独立统计
+        session.setTarget(bank.getTarget());
+        session.setSubject(bank.getSubject());
+        session.setChapter(normalize(req.getChapter()));
+        session.setQuestionType(normalize(req.getQuestionType()));
+        session.setDifficulty(normalize(req.getDifficulty()));
+        session.setYear(req.getYear());
+
         for (int i = 0; i < questions.size(); i++) {
+            Question q = questions.get(i);
             session.getAnswers().add(PracticeAnswer.builder()
                 .session(session)
-                .question(questions.get(i))
+                .question(q)
                 .orderNo(i + 1)
                 .reviewStatus("pending")
+                // 题目快照：创建时固定，历史回放不依赖 Question 主表
+                .snapshotStem(q.getStem())
+                .snapshotOptionsJson(q.getOptionsJson())
+                .snapshotAnswer(q.getAnswer())
+                .snapshotAnalysis(q.getAnalysis())
+                .snapshotQuestionType(q.getQuestionType())
+                .snapshotKnowledgePoint(q.getKnowledgePoint())
+                .snapshotDifficulty(q.getDifficulty())
+                .snapshotYear(q.getYear())
+                .snapshotVersionNo(q.getVersionNo())
                 .build());
         }
 
@@ -149,18 +168,26 @@ public class PracticeService {
         int objectiveCount = 0;
         int correctCount = 0;
         int wrongCount = 0;
+        int answeredCount = 0;
+        int subjectiveCount = 0;
         List<Map<String, Object>> wrongQuestions = new ArrayList<>();
 
         for (PracticeAnswer answer : session.getAnswers()) {
             Question question = answer.getQuestion();
+            if (normalize(answer.getAnswer()) != null) {
+                answeredCount++;
+            }
+
             if (isSubjective(question)) {
+                subjectiveCount++;
                 answer.setCorrect(null);
                 answer.setReviewStatus("saved_only");
                 continue;
             }
 
             objectiveCount++;
-            boolean correct = normalizeAnswer(question.getAnswer()).equals(normalizeAnswer(answer.getAnswer()));
+            String questionAnswer = answer.getSnapshotAnswer() != null ? answer.getSnapshotAnswer() : question.getAnswer();
+            boolean correct = normalizeAnswer(questionAnswer).equals(normalizeAnswer(answer.getAnswer()));
             answer.setCorrect(correct);
             answer.setReviewStatus("auto_scored");
             if (correct) {
@@ -179,8 +206,10 @@ public class PracticeService {
         session.setStatus("submitted");
         session.setSubmittedAt(submittedAt);
         session.setTotalCount(session.getAnswers().size());
+        session.setAnsweredCount(answeredCount);
         session.setCorrectCount(correctCount);
         session.setWrongCount(wrongCount);
+        session.setSubjectiveCount(subjectiveCount);
         session.setDurationSeconds(durationSeconds);
         session.setAccuracy(accuracy);
         session.setScore(accuracy);
@@ -281,6 +310,55 @@ public class PracticeService {
         return result;
     }
 
+    @Transactional(readOnly = true)
+    public Map<String, Object> getHistory(Long userId, String mode, String target, String subject,
+                                           LocalDateTime dateFrom, LocalDateTime dateTo, int page, int size) {
+        // 处理分页
+        int offset = Math.max(0, page - 1) * size;
+
+        List<PracticeSession> allSessions = sessionRepository.findByUserIdAndStatusOrderBySubmittedAtDesc(userId, "submitted")
+            .stream()
+            .filter(s -> s.getSubmittedAt() != null)
+            .filter(s -> normalize(mode) == null || normalize(mode).equals(s.getMode()))
+            .filter(s -> normalize(target) == null || normalize(target).equals(s.getTarget()))
+            .filter(s -> normalize(subject) == null || normalize(subject).equals(s.getSubject()))
+            .filter(s -> dateFrom == null || !s.getSubmittedAt().toLocalDate().isBefore(dateFrom.toLocalDate()))
+            .filter(s -> dateTo == null || !s.getSubmittedAt().toLocalDate().isAfter(dateTo.toLocalDate()))
+            .toList();
+
+        int total = allSessions.size();
+        List<Map<String, Object>> items = allSessions.stream()
+            .skip(offset)
+            .limit(size)
+            .map(session -> {
+                Map<String, Object> map = new LinkedHashMap<>();
+                map.put("id", session.getId());
+                map.put("bankId", session.getBank() != null ? session.getBank().getId() : null);
+                map.put("bankName", session.getBank() != null ? session.getBank().getName() : null);
+                map.put("mode", session.getMode());
+                map.put("totalCount", session.getTotalCount());
+                map.put("correctCount", session.getCorrectCount());
+                map.put("wrongCount", session.getWrongCount());
+                map.put("accuracy", session.getAccuracy());
+                map.put("score", session.getScore());
+                map.put("durationSeconds", session.getDurationSeconds());
+                map.put("target", session.getTarget());
+                map.put("subject", session.getSubject());
+                map.put("startedAt", session.getStartedAt() != null ? session.getStartedAt().toString() : null);
+                map.put("submittedAt", session.getSubmittedAt() != null ? session.getSubmittedAt().toString() : null);
+                return map;
+            })
+            .toList();
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("items", items);
+        result.put("total", total);
+        result.put("page", page);
+        result.put("size", size);
+        result.put("totalPages", (int) Math.ceil((double) total / size));
+        return result;
+    }
+
     private PracticeSession loadOwnedSession(Long userId, Long sessionId) {
         PracticeSession session = sessionRepository.findById(sessionId)
             .orElseThrow(() -> new BusinessException("练习记录不存在"));
@@ -328,18 +406,21 @@ public class PracticeService {
         Question question = answer.getQuestion();
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", question.getId());
-        map.put("stem", question.getStem());
-        map.put("options", question.getOptionsJson());
-        map.put("analysis", includeAnswers ? question.getAnalysis() : null);
+        // 优先使用快照字段，保证历史回放一致性
+        map.put("stem", answer.getSnapshotStem() != null ? answer.getSnapshotStem() : question.getStem());
+        map.put("options", answer.getSnapshotOptionsJson() != null ? answer.getSnapshotOptionsJson() : question.getOptionsJson());
+        map.put("analysis", includeAnswers
+            ? (answer.getSnapshotAnalysis() != null ? answer.getSnapshotAnalysis() : question.getAnalysis())
+            : null);
         map.put("chapter", question.getChapter());
-        map.put("difficulty", question.getDifficulty());
-        map.put("questionType", question.getQuestionType());
-        map.put("knowledgePoint", question.getKnowledgePoint());
-        map.put("year", question.getYear());
+        map.put("difficulty", answer.getSnapshotDifficulty() != null ? answer.getSnapshotDifficulty() : question.getDifficulty());
+        map.put("questionType", answer.getSnapshotQuestionType() != null ? answer.getSnapshotQuestionType() : question.getQuestionType());
+        map.put("knowledgePoint", answer.getSnapshotKnowledgePoint() != null ? answer.getSnapshotKnowledgePoint() : question.getKnowledgePoint());
+        map.put("year", answer.getSnapshotYear() != null ? answer.getSnapshotYear() : question.getYear());
         map.put("userAnswer", answer.getAnswer());
         map.put("correct", includeAnswers ? answer.getCorrect() : null);
         if (includeAnswers) {
-            map.put("answer", question.getAnswer());
+            map.put("answer", answer.getSnapshotAnswer() != null ? answer.getSnapshotAnswer() : question.getAnswer());
         }
         return map;
     }
