@@ -824,3 +824,30 @@ export const adminApi = {
     return request(`/api/admin/kaoyan/score-lines/${id}`, { method: 'DELETE', token })
   },
 }
+
+export const adminQuestionBankApi = {
+  banks(page = 0, size = 20, token) {
+    return request(`/api/admin/question-banks?page=${page}&size=${size}`, { token })
+  },
+  createBank(payload, token) {
+    return request('/api/admin/question-banks', { method: 'POST', body: payload, token })
+  },
+  updateBank(id, payload, token) {
+    return request(`/api/admin/question-banks/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteBank(id, token) {
+    return request(`/api/admin/question-banks/${id}`, { method: 'DELETE', token })
+  },
+  questions(bankId, page = 0, size = 20, token) {
+    return request(`/api/admin/question-banks/${bankId}/questions?page=${page}&size=${size}`, { token })
+  },
+  createQuestion(bankId, payload, token) {
+    return request(`/api/admin/question-banks/${bankId}/questions`, { method: 'POST', body: payload, token })
+  },
+  updateQuestion(id, payload, token) {
+    return request(`/api/admin/questions/${id}`, { method: 'PUT', body: payload, token })
+  },
+  deleteQuestion(id, token) {
+    return request(`/api/admin/questions/${id}`, { method: 'DELETE', token })
+  },
+}
