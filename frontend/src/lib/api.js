@@ -133,6 +133,14 @@ export const practiceApi = {
   statistics(granularity = 'day', token) {
     return request(`/api/practice/statistics?granularity=${granularity}`, { token })
   },
+  history(filters = {}, token) {
+    const search = new URLSearchParams()
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') search.set(key, String(value))
+    })
+    const query = search.toString()
+    return request(`/api/practice/history${query ? `?${query}` : ''}`, { token })
+  },
   submitAttempt(questionId, payload, token) {
     return request(`/api/questions/${questionId}/attempt`, {
       method: 'POST',
