@@ -850,4 +850,12 @@ export const adminQuestionBankApi = {
   deleteQuestion(id, token) {
     return request(`/api/admin/questions/${id}`, { method: 'DELETE', token })
   },
+  batchCreateQuestions(bankId, questions, token) {
+    return request(`/api/admin/question-banks/${bankId}/questions/batch`, {
+      method: 'POST', body: { questions }, token,
+    })
+  },
+  snapshots(questionId, token) {
+    return request(`/api/admin/questions/${questionId}/snapshots`, { token })
+  },
 }
